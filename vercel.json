@@ -1,13 +1,23 @@
 {
   "version": 2,
   "name": "make-it-snap",
+  "builds": [
+    {
+      "src": "api/**/*.js",
+      "use": "@vercel/node"
+    }
+  ],
   "routes": [
     {
       "src": "/api/(.*)",
       "dest": "/api/$1"
     },
     {
-      "src": "/(.*)",
+      "src": "/",
+      "dest": "/index.html"
+    },
+    {
+      "src": "/(.*\\.(css|js|png|jpg|jpeg|gif|svg|ico))",
       "dest": "/$1"
     }
   ],
@@ -15,9 +25,5 @@
     "api/**/*.js": {
       "runtime": "edge"
     }
-  },
-  "env": {
-    "BLOB_READ_WRITE_TOKEN": "@blob_read_write_token",
-    "SECRET_CONDITION": "@secret_condition"
   }
 }
