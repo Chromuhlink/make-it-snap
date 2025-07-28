@@ -395,15 +395,20 @@ function displayGallery(photos) {
         return;
     }
     
-    galleryGrid.innerHTML = photos.map(photo => `
-        <div class="gallery-item" onclick="openPhoto('${photo.url}')">
-            <img src="${photo.url}" alt="${photo.filename}" loading="lazy">
-            <div class="photo-info">
-                <div>${new Date(photo.uploadedAt).toLocaleDateString()}</div>
-                <div>${new Date(photo.uploadedAt).toLocaleTimeString()}</div>
+    galleryGrid.innerHTML = photos.map(photo => {
+        // Create thumbnail URL with Vercel image optimization
+        const thumbnailUrl = `${photo.url}?width=300&height=225&fit=cover&quality=80`;
+        
+        return `
+            <div class="gallery-item" onclick="openPhoto('${photo.url}')">
+                <img src="${thumbnailUrl}" alt="${photo.filename}" loading="lazy">
+                <div class="photo-info">
+                    <div>${new Date(photo.uploadedAt).toLocaleDateString()}</div>
+                    <div>${new Date(photo.uploadedAt).toLocaleTimeString()}</div>
+                </div>
             </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 function updateGalleryInfo(count) {
