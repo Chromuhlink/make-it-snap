@@ -36,21 +36,29 @@ export default async function handler(request) {
       );
     }
 
+    console.log('Upload API: Processing image upload');
+    
     // Remove data:image/png;base64, prefix if present
     const base64Data = image.replace(/^data:image\/[a-z]+;base64,/, '');
     
     // Convert base64 to buffer
     const imageBuffer = Buffer.from(base64Data, 'base64');
     
+    console.log('Upload API: Image buffer size:', imageBuffer.length);
+    
     // Generate timestamp filename if not provided
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const fileName = filename || `photo-${timestamp}.png`;
+    
+    console.log('Upload API: Uploading as:', fileName);
 
     // Upload to Vercel Blob Storage
     const blob = await put(fileName, imageBuffer, {
       access: 'public',
       contentType: 'image/png',
     });
+    
+    console.log('Upload API: Success! Blob URL:', blob.url);
 
     return new Response(
       JSON.stringify({

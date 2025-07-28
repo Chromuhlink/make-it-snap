@@ -325,8 +325,11 @@ function autoCapture() {
 
 async function uploadToGallery() {
     try {
+        console.log('Client: Starting photo upload...');
+        
         // Convert canvas to base64
         const imageData = canvas.toDataURL('image/png');
+        console.log('Client: Canvas data size:', imageData.length);
         
         const response = await fetch('/api/upload', {
             method: 'POST',
@@ -334,17 +337,25 @@ async function uploadToGallery() {
             body: JSON.stringify({ image: imageData })
         });
         
+        console.log('Client: Upload response status:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Client: Upload failed with status', response.status, ':', errorText);
+            return;
+        }
+        
         const result = await response.json();
         
         if (result.success) {
-            console.log('Photo uploaded to gallery:', result.url);
+            console.log('Client: Photo uploaded successfully:', result.url);
             // Silently refresh gallery
             fetchGallery();
         } else {
-            console.error('Upload failed:', result.error);
+            console.error('Client: Upload failed:', result.error);
         }
     } catch (error) {
-        console.error('Upload error:', error);
+        console.error('Client: Upload error:', error);
     }
 }
 
@@ -371,18 +382,30 @@ let galleryRefreshInterval = null;
 
 async function fetchGallery() {
     try {
+        console.log('Client: Fetching gallery...');
         const response = await fetch('/api/gallery');
+        
+        console.log('Client: Gallery response status:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Client: Gallery fetch failed with status', response.status, ':', errorText);
+            showGalleryError();
+            return;
+        }
+        
         const data = await response.json();
+        console.log('Client: Gallery data received:', data);
         
         if (data.success) {
             displayGallery(data.photos);
             updateGalleryInfo(data.count);
         } else {
-            console.error('Gallery fetch failed:', data.error);
+            console.error('Client: Gallery fetch failed:', data.error);
             showGalleryError();
         }
     } catch (error) {
-        console.error('Gallery fetch error:', error);
+        console.error('Client: Gallery fetch error:', error);
         showGalleryError();
     }
 }
@@ -438,7 +461,6 @@ function startGalleryAutoRefresh() {
     }, 10000);
 }
 
-captureBtn.addEventListener('click', capturePhoto);
 document.addEventListener('keydown', handleKeyPress);
 
 startCamera();

@@ -23,8 +23,12 @@ export default async function handler(request) {
   }
 
   try {
+    console.log('Gallery API: Starting blob list request');
+    
     // List all blobs from Vercel Blob Storage
     const { blobs } = await list();
+    
+    console.log('Gallery API: Found', blobs?.length || 0, 'total blobs');
     
     // Filter for photo files and sort by uploadedAt (newest first)
     const photos = blobs
@@ -36,6 +40,8 @@ export default async function handler(request) {
         uploadedAt: blob.uploadedAt,
         size: blob.size,
       }));
+
+    console.log('Gallery API: Filtered to', photos.length, 'photos');
 
     return new Response(
       JSON.stringify({
