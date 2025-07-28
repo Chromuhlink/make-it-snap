@@ -1,7 +1,5 @@
-import { put } from '@vercel/blob';
-
 export default async function handler(request) {
-  console.log('Upload API: Received request, method:', request.method);
+  console.log('Upload API: Function started, method:', request.method);
   
   // Add CORS headers
   const headers = {
@@ -20,7 +18,10 @@ export default async function handler(request) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
     console.error('Upload API: BLOB_READ_WRITE_TOKEN not configured');
     return new Response(
-      JSON.stringify({ error: 'Blob storage not configured' }),
+      JSON.stringify({ 
+        error: 'Blob storage not configured',
+        hasToken: false 
+      }),
       {
         status: 500,
         headers,
@@ -69,6 +70,10 @@ export default async function handler(request) {
     const fileName = filename || `photo-${timestamp}.png`;
     
     console.log('Upload API: Uploading as:', fileName);
+    
+    // Dynamic import to avoid compilation issues
+    console.log('Upload API: Importing @vercel/blob');
+    const { put } = await import('@vercel/blob');
 
     // Upload to Vercel Blob Storage
     const blob = await put(fileName, imageBuffer, {

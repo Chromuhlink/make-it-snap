@@ -1,7 +1,5 @@
-import { list } from '@vercel/blob';
-
 export default async function handler(request) {
-  console.log('Gallery API: Received request, method:', request.method);
+  console.log('Gallery API: Function started');
   
   // Add CORS headers
   const headers = {
@@ -21,7 +19,10 @@ export default async function handler(request) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
     console.error('Gallery API: BLOB_READ_WRITE_TOKEN not configured');
     return new Response(
-      JSON.stringify({ error: 'Blob storage not configured' }),
+      JSON.stringify({ 
+        error: 'Blob storage not configured',
+        hasToken: false 
+      }),
       {
         status: 500,
         headers,
@@ -40,6 +41,11 @@ export default async function handler(request) {
   }
 
   try {
+    console.log('Gallery API: Attempting to import @vercel/blob');
+    
+    // Dynamic import to avoid compilation issues
+    const { list } = await import('@vercel/blob');
+    
     console.log('Gallery API: Starting blob list request');
     
     // List all blobs from Vercel Blob Storage
@@ -48,7 +54,7 @@ export default async function handler(request) {
     console.log('Gallery API: Found', blobs?.length || 0, 'total blobs');
     
     // Filter for photo files and sort by uploadedAt (newest first)
-    const photos = blobs
+    const photos = (blobs || [])
       .filter(blob => blob.pathname.startsWith('photo-'))
       .sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))
       .map(blob => ({
