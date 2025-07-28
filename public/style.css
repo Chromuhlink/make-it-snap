@@ -219,22 +219,35 @@ h1 {
 }
 
 .gallery-loading {
-    grid-column: 1 / -1;
     text-align: center;
     color: #666;
     font-style: italic;
+    grid-column: 1 / -1;
     padding: 2rem;
 }
 
 .gallery-empty {
-    grid-column: 1 / -1;
     text-align: center;
     color: #666;
-    font-style: italic;
+    font-size: 1.2rem;
+    grid-column: 1 / -1;
     padding: 3rem;
     background: #f9f9f9;
     border-radius: 8px;
-    border: 2px dashed #ddd;
+}
+
+.gallery-error {
+    text-align: center;
+    color: #dc3545;
+    grid-column: 1 / -1;
+    padding: 2rem;
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 8px;
+}
+
+.gallery-error p {
+    margin: 0.5rem 0;
 }
 
 .gallery-info {

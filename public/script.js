@@ -477,6 +477,12 @@ async function uploadToGallery() {
         const imageData = canvas.toDataURL('image/png');
         console.log('Client: Canvas data size:', imageData.length);
         
+        // Add visual feedback during upload
+        const captureMessage = document.getElementById('capture-message');
+        if (captureMessage) {
+            captureMessage.textContent = 'Uploading...';
+        }
+        
         const response = await fetch('/api/upload', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -488,6 +494,11 @@ async function uploadToGallery() {
         if (!response.ok) {
             const errorText = await response.text();
             console.error('Client: Upload failed with status', response.status, ':', errorText);
+            
+            // Update message to show error
+            if (captureMessage) {
+                captureMessage.textContent = 'Upload failed!';
+            }
             return;
         }
         
@@ -495,13 +506,26 @@ async function uploadToGallery() {
         
         if (result.success) {
             console.log('Client: Photo uploaded successfully:', result.url);
+            
+            // Update message to show success
+            if (captureMessage) {
+                captureMessage.textContent = 'CAPTURED & SAVED!';
+            }
+            
             // Silently refresh gallery
             fetchGallery();
         } else {
             console.error('Client: Upload failed:', result.error);
+            if (captureMessage) {
+                captureMessage.textContent = 'Upload error!';
+            }
         }
     } catch (error) {
         console.error('Client: Upload error:', error);
+        const captureMessage = document.getElementById('capture-message');
+        if (captureMessage) {
+            captureMessage.textContent = 'Network error!';
+        }
     }
 }
 
@@ -600,7 +624,12 @@ function updateGalleryInfo(count) {
 
 function showGalleryError() {
     const galleryGrid = document.getElementById('gallery-grid');
-    galleryGrid.innerHTML = '<div class="gallery-loading">Failed to load photos. Retrying...</div>';
+    galleryGrid.innerHTML = `
+        <div class="gallery-error">
+            <p>😕 Failed to load photos</p>
+            <p style="font-size: 0.9em; opacity: 0.8;">Check your connection and refresh</p>
+        </div>
+    `;
 }
 
 function openPhoto(url) {
@@ -609,15 +638,40 @@ function openPhoto(url) {
 
 function startGalleryAutoRefresh() {
     // Initial load
+    console.log('Gallery: Starting auto-refresh system');
     fetchGallery();
     
     // Silent auto-refresh every 10 seconds
+    if (galleryRefreshInterval) {
+        clearInterval(galleryRefreshInterval);
+    }
+    
     galleryRefreshInterval = setInterval(() => {
+        console.log('Gallery: Auto-refreshing...');
         fetchGallery();
     }, 10000);
 }
 
+// Add manual refresh capability
+function addGalleryRefreshButton() {
+    const galleryInfo = document.querySelector('.gallery-info');
+    if (galleryInfo && !document.getElementById('refresh-btn')) {
+        const refreshBtn = document.createElement('button');
+        refreshBtn.id = 'refresh-btn';
+        refreshBtn.textContent = '🔄 Refresh';
+        refreshBtn.style.cssText = 'margin-left: 1rem; padding: 4px 8px; cursor: pointer; border: 1px solid #ddd; border-radius: 4px; background: white;';
+        refreshBtn.onclick = () => {
+            console.log('Gallery: Manual refresh triggered');
+            fetchGallery();
+        };
+        galleryInfo.appendChild(refreshBtn);
+    }
+}
+
 document.addEventListener('keydown', handleKeyPress);
 
+// Initialize everything when page loads
+console.log('App: Starting camera and gallery systems...');
 startCamera();
 startGalleryAutoRefresh();
+addGalleryRefreshButton();
