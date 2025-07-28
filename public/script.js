@@ -44,16 +44,40 @@ async function loadModels() {
         
         console.log('Models: face-api.js library found');
         
-        // Load models from the working CDN
-        const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
+        // Try multiple CDN sources for better reliability
+        const MODEL_URLS = [
+            'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights',
+            'https://justadudewhohacks.github.io/face-api.js/models',
+            '/models' // Fallback to local if you host them
+        ];
         
-        console.log('Models: Loading tiny face detector...');
-        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-        console.log('Models: Tiny face detector loaded');
+        let modelLoaded = false;
+        let lastError = null;
         
-        console.log('Models: Loading face expression net...');
-        await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
-        console.log('Models: Face expression net loaded');
+        for (const MODEL_URL of MODEL_URLS) {
+            try {
+                console.log(`Models: Trying to load from ${MODEL_URL}...`);
+                
+                console.log('Models: Loading tiny face detector...');
+                await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+                console.log('Models: Tiny face detector loaded');
+                
+                console.log('Models: Loading face expression net...');
+                await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
+                console.log('Models: Face expression net loaded');
+                
+                modelLoaded = true;
+                break; // Success, exit loop
+            } catch (error) {
+                console.error(`Models: Failed to load from ${MODEL_URL}:`, error);
+                lastError = error;
+                // Try next URL
+            }
+        }
+        
+        if (!modelLoaded) {
+            throw lastError || new Error('Failed to load models from all sources');
+        }
         
         modelsLoaded = true;
         console.log('Models: All face-api.js models loaded successfully!');
@@ -73,6 +97,12 @@ async function startCamera() {
         countdownDisplay.style.display = 'none';
         
         console.log('Camera: Requesting camera permissions...');
+        
+        // Check if getUserMedia is available
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error('getUserMedia is not supported in this browser');
+        }
+        
         stream = await navigator.mediaDevices.getUserMedia({
             video: { 
                 width: { ideal: 640 },
@@ -82,12 +112,25 @@ async function startCamera() {
             audio: false
         });
         
-        console.log('Camera: Stream obtained, setting up video element...');
+        console.log('Camera: Stream obtained successfully');
+        console.log('Camera: Stream active:', stream.active);
+        console.log('Camera: Video tracks:', stream.getVideoTracks().length);
+        
         video.srcObject = stream;
         
-        // Wait for video to be fully loaded
-        video.addEventListener('loadedmetadata', async () => {
-            console.log('Camera: Video metadata loaded, dimensions:', video.videoWidth, 'x', video.videoHeight);
+        // Add error handler for video element
+        video.onerror = (error) => {
+            console.error('Camera: Video element error:', error);
+        };
+        
+        // Use both loadedmetadata and canplay events for better compatibility
+        let videoReady = false;
+        
+        const handleVideoReady = async () => {
+            if (videoReady) return; // Prevent multiple initializations
+            videoReady = true;
+            
+            console.log('Camera: Video ready, dimensions:', video.videoWidth, 'x', video.videoHeight);
             
             // Set canvas dimensions to match video
             overlayCanvas.width = video.videoWidth;
@@ -101,28 +144,54 @@ async function startCamera() {
             console.log('Camera: Loading face detection models...');
             await loadModels();
             
-            // Wait a bit more to ensure video is playing
-            setTimeout(() => {
-                if (modelsLoaded) {
-                    console.log('Camera: Models loaded successfully, starting smile detection...');
-                    startSmileDetection();
-                } else {
-                    console.error('Camera: Models failed to load, cannot start smile detection');
-                }
-            }, 1000);
+            // Start detection immediately if models loaded
+            if (modelsLoaded) {
+                console.log('Camera: Models loaded successfully, starting smile detection...');
+                startSmileDetection();
+            } else {
+                console.error('Camera: Models failed to load, cannot start smile detection');
+                // Show user-friendly error
+                alert('Face detection models could not be loaded. Please check your internet connection and refresh the page.');
+            }
+        };
+        
+        video.addEventListener('loadedmetadata', handleVideoReady);
+        video.addEventListener('canplay', handleVideoReady);
+        
+        // Force play the video
+        await video.play().catch(e => {
+            console.error('Camera: Video play failed:', e);
         });
         
-        // Also add a fallback in case loadedmetadata doesn't fire
+        // Fallback check after 5 seconds
         setTimeout(() => {
-            if (video.videoWidth === 0) {
-                console.error('Camera: Video not loading properly, retrying...');
-                video.play().catch(e => console.error('Camera: Video play failed:', e));
+            if (!videoReady || video.videoWidth === 0) {
+                console.error('Camera: Video not loading properly after 5 seconds');
+                console.log('Camera: Video state - width:', video.videoWidth, 'readyState:', video.readyState);
+                alert('Camera stream is not working properly. Please refresh the page and ensure camera permissions are granted.');
             }
-        }, 3000);
+        }, 5000);
         
     } catch (error) {
         console.error('Camera: Error accessing camera:', error);
-        alert('Unable to access camera. Please ensure you have granted camera permissions and reload the page.');
+        console.error('Camera: Error name:', error.name);
+        console.error('Camera: Error message:', error.message);
+        
+        let errorMessage = 'Unable to access camera. ';
+        
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+            errorMessage += 'Please ensure you have granted camera permissions.';
+        } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+            errorMessage += 'No camera found on your device.';
+        } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+            errorMessage += 'Camera is already in use by another application.';
+        } else if (error.name === 'OverconstrainedError' || error.name === 'ConstraintNotSatisfiedError') {
+            errorMessage += 'Camera does not support the requested settings.';
+        } else {
+            errorMessage += error.message || 'Unknown error occurred.';
+        }
+        
+        alert(errorMessage);
     }
 }
 
@@ -187,6 +256,8 @@ async function detectSmile() {
     // Log every 10th detection cycle to show it's running
     if (Math.random() < 0.1) {
         console.log('Detection: Running face detection cycle...');
+        console.log('Detection: Video dimensions:', video.videoWidth, 'x', video.videoHeight);
+        console.log('Detection: Canvas dimensions:', overlayCanvas.width, 'x', overlayCanvas.height);
     }
     
     try {
@@ -199,7 +270,7 @@ async function detectSmile() {
         overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
         
         if (detections.length > 0) {
-            console.log('Face detected:', detections.length);
+            console.log('Face detected:', detections.length, 'faces');
             const detection = detections[0];
             const expressions = detection.expressions;
             const happiness = expressions.happy;
