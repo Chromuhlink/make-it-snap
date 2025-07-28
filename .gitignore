@@ -1,81 +1,30 @@
 # Environment variables
 .env
 .env.local
-.env.production
-.env.development
-.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# API Keys and Secrets
-**/config.js
-**/config.json
-secrets/
-*.key
-*.pem
-*.cert
+# Dependencies
+node_modules
+.pnpm-debug.log*
 
-# Credentials
-credentials.json
-auth.json
-firebase-config.js
+# Vercel
+.vercel
 
-# IDE and Editor files
-.vscode/
-.idea/
-*.sublime-project
-*.sublime-workspace
+# Development
 .DS_Store
-
-# Dependencies (if you add any)
-node_modules/
-bower_components/
-
-# Build output
-dist/
-build/
-*.min.js
-*.min.css
-
-# Logs
-logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Testing
-coverage/
-.nyc_output
+# Build output
+dist/
+build/
 
-# Temporary files
-*.tmp
-*.temp
-.cache/
-tmp/
-temp/
-
-# OS Files
-Thumbs.db
-.DS_Store
-._*
-
-# Backup files
-*.bak
-*.backup
-*~
-
-# Private or local configuration
-local-config.js
-private/
-
-# Database files
-*.db
-*.sqlite
-*.sqlite3
-
-# If you add any package managers
-package-lock.json
-yarn.lock
-
-# Misc
-.sass-cache/
-*.map 
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
