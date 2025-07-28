@@ -35,26 +35,44 @@ function createShutterSound() {
 
 async function loadModels() {
     try {
-        console.log('Loading face-api.js models...');
+        console.log('Models: Starting face-api.js model loading...');
+        
+        // Check if face-api is available
+        if (typeof faceapi === 'undefined') {
+            throw new Error('face-api.js library not loaded');
+        }
+        
+        console.log('Models: face-api.js library found');
+        
         // Load models from the working CDN
         const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
         
+        console.log('Models: Loading tiny face detector...');
         await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+        console.log('Models: Tiny face detector loaded');
+        
+        console.log('Models: Loading face expression net...');
         await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
+        console.log('Models: Face expression net loaded');
         
         modelsLoaded = true;
-        console.log('Face-api.js models loaded successfully');
+        console.log('Models: All face-api.js models loaded successfully!');
+        
     } catch (error) {
-        console.error('Error loading face-api.js models:', error);
+        console.error('Models: Error loading face-api.js models:', error);
         alert('Failed to load face detection models. Please check your internet connection and reload the page.');
+        modelsLoaded = false;
     }
 }
 
 async function startCamera() {
     try {
+        console.log('Camera: Starting camera initialization...');
+        
         // Ensure countdown is hidden on startup
         countdownDisplay.style.display = 'none';
         
+        console.log('Camera: Requesting camera permissions...');
         stream = await navigator.mediaDevices.getUserMedia({
             video: { 
                 width: { ideal: 640 },
@@ -64,12 +82,12 @@ async function startCamera() {
             audio: false
         });
         
+        console.log('Camera: Stream obtained, setting up video element...');
         video.srcObject = stream;
-        captureBtn.disabled = false;
         
         // Wait for video to be fully loaded
         video.addEventListener('loadedmetadata', async () => {
-            console.log('Video loaded, dimensions:', video.videoWidth, 'x', video.videoHeight);
+            console.log('Camera: Video metadata loaded, dimensions:', video.videoWidth, 'x', video.videoHeight);
             
             // Set canvas dimensions to match video
             overlayCanvas.width = video.videoWidth;
@@ -77,22 +95,34 @@ async function startCamera() {
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             
+            console.log('Camera: Canvas dimensions set');
+            
             // Load models after video is ready
+            console.log('Camera: Loading face detection models...');
             await loadModels();
             
             // Wait a bit more to ensure video is playing
             setTimeout(() => {
                 if (modelsLoaded) {
-                    console.log('Starting smile detection...');
+                    console.log('Camera: Models loaded successfully, starting smile detection...');
                     startSmileDetection();
                 } else {
-                    console.error('Models not loaded, cannot start smile detection');
+                    console.error('Camera: Models failed to load, cannot start smile detection');
                 }
             }, 1000);
         });
+        
+        // Also add a fallback in case loadedmetadata doesn't fire
+        setTimeout(() => {
+            if (video.videoWidth === 0) {
+                console.error('Camera: Video not loading properly, retrying...');
+                video.play().catch(e => console.error('Camera: Video play failed:', e));
+            }
+        }, 3000);
+        
     } catch (error) {
-        console.error('Error accessing camera:', error);
-        alert('Unable to access camera. Please ensure you have granted camera permissions.');
+        console.error('Camera: Error accessing camera:', error);
+        alert('Unable to access camera. Please ensure you have granted camera permissions and reload the page.');
     }
 }
 
@@ -150,8 +180,13 @@ function resetCamera() {
 
 async function detectSmile() {
     if (!modelsLoaded || video.readyState !== 4) {
-        console.log('Not ready for detection:', { modelsLoaded, videoReady: video.readyState === 4 });
+        console.log('Detection: Not ready - Models loaded:', modelsLoaded, 'Video ready state:', video.readyState);
         return;
+    }
+    
+    // Log every 10th detection cycle to show it's running
+    if (Math.random() < 0.1) {
+        console.log('Detection: Running face detection cycle...');
     }
     
     try {
@@ -254,9 +289,13 @@ function startSmileDetection() {
         clearInterval(detectionInterval);
     }
     
+    console.log('Detection: Starting smile detection with 300ms interval');
+    console.log('Detection: Video ready state:', video.readyState);
+    console.log('Detection: Models loaded:', modelsLoaded);
+    
     // Run detection more frequently for better responsiveness
     detectionInterval = setInterval(detectSmile, 300);
-    console.log('Smile detection interval started');
+    console.log('Detection: Smile detection interval started successfully');
 }
 
 function stopSmileDetection() {
