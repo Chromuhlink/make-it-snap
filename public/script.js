@@ -96,6 +96,11 @@ async function startCamera() {
         // Ensure countdown is hidden on startup
         countdownDisplay.style.display = 'none';
         
+        // Hide manual capture button since we're using automatic smile detection
+        if (captureBtn) {
+            captureBtn.style.display = 'none';
+        }
+        
         console.log('Camera: Requesting camera permissions...');
         
         // Check if getUserMedia is available
@@ -196,6 +201,8 @@ async function startCamera() {
 }
 
 async function capturePhoto() {
+    console.log('Capture: Starting photo capture');
+    
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     
@@ -204,31 +211,46 @@ async function capturePhoto() {
     video.style.display = 'none';
     canvas.style.display = 'block';
     overlayCanvas.style.display = 'none';
-    captureBtn.style.display = 'none';
     
+    if (captureBtn) {
+        captureBtn.style.display = 'none';
+    }
+    
+    // Show capture message and save controls
     captureMessage.style.display = 'block';
     saveControls.style.display = 'block';
+    
+    console.log('Capture: Save controls displayed, waiting for user input (D to download, E to exit)');
+    console.log('Capture: Will auto-exit in 6 seconds');
     
     // Auto-upload to gallery
     await uploadToGallery();
     
+    // Hide capture message after 2 seconds
     setTimeout(() => {
         captureMessage.style.display = 'none';
     }, 2000);
     
     // Auto-exit after 6 seconds
     setTimeout(() => {
+        console.log('Capture: Auto-exit timer triggered after 6 seconds');
         resetCamera();
     }, 6000);
 }
 
 function resetCamera() {
+    console.log('Reset: Resetting camera to initial state');
+    
+    // Hide captured image and show video
     canvas.style.display = 'none';
     video.style.display = 'block';
     overlayCanvas.style.display = 'block';
-    captureBtn.style.display = 'block';
-    captureBtn.textContent = 'Capture Photo';
-    captureBtn.onclick = capturePhoto;
+    
+    // Hide all UI elements
+    if (captureBtn) {
+        captureBtn.style.display = 'none'; // Keep hidden for auto-capture mode
+    }
+    
     saveControls.style.display = 'none';
     captureMessage.style.display = 'none';
     countdownDisplay.style.display = 'none';
@@ -240,9 +262,12 @@ function resetCamera() {
     }
     isCountingDown = false;
     
+    // Clear overlay canvas
     overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
     
+    // Restart smile detection
     if (modelsLoaded && !detectionInterval) {
+        console.log('Reset: Restarting smile detection');
         startSmileDetection();
     }
 }
@@ -429,8 +454,19 @@ function cancelCountdown() {
 
 function autoCapture() {
     createShutterSound();
-    capturePhoto();
+    
+    // Stop smile detection before capturing
+    stopSmileDetection();
+    
+    // Clear any remaining countdown state
+    if (countdownTimer) {
+        clearInterval(countdownTimer);
+        countdownTimer = null;
+    }
     isCountingDown = false;
+    
+    // Capture the photo
+    capturePhoto();
 }
 
 async function uploadToGallery() {
@@ -478,10 +514,20 @@ function downloadPhoto() {
 }
 
 function handleKeyPress(event) {
+    // Only handle keys when save controls are visible
     if (saveControls.style.display === 'block') {
-        if (event.key.toLowerCase() === 'd') {
+        const key = event.key.toLowerCase();
+        console.log('Keyboard: Key pressed:', key);
+        
+        if (key === 'd') {
+            console.log('Keyboard: Download requested');
             downloadPhoto();
-        } else if (event.key.toLowerCase() === 'e') {
+            // Optional: Reset camera after download
+            setTimeout(() => {
+                resetCamera();
+            }, 1000);
+        } else if (key === 'e') {
+            console.log('Keyboard: Exit requested');
             resetCamera();
         }
     }
