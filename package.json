@@ -5,7 +5,7 @@
   "main": "index.html",
   "scripts": {
     "dev": "vercel dev",
-    "build": "vercel build",
+    "build": "echo 'Static files are in public directory'",
     "deploy": "vercel"
   },
   "dependencies": {

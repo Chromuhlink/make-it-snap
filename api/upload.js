@@ -1,9 +1,5 @@
 import { put } from '@vercel/blob';
 
-export const config = {
-  runtime: 'edge',
-};
-
 export default async function handler(request) {
   // Check for required environment variables
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
