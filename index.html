@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Make It Snap</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Make It Snap</h1>
+        <div class="camera-container">
+            <video id="video" autoplay muted></video>
+            <canvas id="canvas"></canvas>
+            <canvas id="overlay-canvas"></canvas>
+            <div id="capture-message" class="capture-message">CAPTURED!</div>
+            <div id="countdown-display" class="countdown-display">3</div>
+        </div>
+        <div class="controls">
+            <div id="save-controls" class="save-controls">
+                <p>Press <span class="key">D</span> to Download or <span class="key">E</span> to Exit</p>
+            </div>
+        </div>
+        
+        <div class="gallery-section">
+            <h2>Photo Gallery</h2>
+            <div id="gallery-grid" class="gallery-grid">
+                <div class="gallery-loading">Loading photos...</div>
+            </div>
+            <div class="gallery-info">
+                <span id="photo-count">0 photos</span>
+                <span id="last-updated">Never</span>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
