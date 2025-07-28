@@ -216,19 +216,24 @@ async function capturePhoto() {
         captureBtn.style.display = 'none';
     }
     
-    // Show capture message and save controls
+    // Show capture message and save controls immediately
     captureMessage.style.display = 'block';
     saveControls.style.display = 'block';
     
     console.log('Capture: Save controls displayed, waiting for user input (D to download, E to exit)');
     console.log('Capture: Will auto-exit in 6 seconds');
     
-    // Auto-upload to gallery
-    await uploadToGallery();
+    // Start upload in background (non-blocking)
+    uploadToGallery().catch(err => {
+        console.error('Capture: Background upload failed:', err);
+    });
     
-    // Hide capture message after 2 seconds
+    // Hide initial capture message after 2 seconds (upload status will replace it)
     setTimeout(() => {
-        captureMessage.style.display = 'none';
+        // Only hide if it still says "CAPTURED!"
+        if (captureMessage.textContent === 'CAPTURED!') {
+            captureMessage.style.display = 'none';
+        }
     }, 2000);
     
     // Auto-exit after 6 seconds
@@ -483,11 +488,20 @@ async function uploadToGallery() {
             captureMessage.textContent = 'Uploading...';
         }
         
-        const response = await fetch('/api/upload', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image: imageData })
+        // Create a timeout promise
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Upload timeout')), 10000); // 10 second timeout
         });
+        
+        // Race between fetch and timeout
+        const response = await Promise.race([
+            fetch('/api/upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: imageData })
+            }),
+            timeoutPromise
+        ]);
         
         console.log('Client: Upload response status:', response.status);
         
@@ -497,8 +511,10 @@ async function uploadToGallery() {
             
             // Update message to show error
             if (captureMessage) {
-                captureMessage.textContent = 'Upload failed!';
+                captureMessage.textContent = 'Upload failed! (Error ' + response.status + ')';
             }
+            
+            // Don't block the user - still show save controls
             return;
         }
         
@@ -513,18 +529,31 @@ async function uploadToGallery() {
             }
             
             // Silently refresh gallery
-            fetchGallery();
+            setTimeout(() => fetchGallery(), 500); // Small delay to ensure storage is updated
         } else {
             console.error('Client: Upload failed:', result.error);
             if (captureMessage) {
-                captureMessage.textContent = 'Upload error!';
+                captureMessage.textContent = 'Upload error: ' + (result.error || 'Unknown');
             }
         }
     } catch (error) {
         console.error('Client: Upload error:', error);
         const captureMessage = document.getElementById('capture-message');
-        if (captureMessage) {
-            captureMessage.textContent = 'Network error!';
+        
+        if (error.message === 'Upload timeout') {
+            console.error('Client: Upload timed out after 10 seconds');
+            if (captureMessage) {
+                captureMessage.textContent = 'Upload timed out!';
+            }
+        } else if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+            console.error('Client: Network error - could not connect to server');
+            if (captureMessage) {
+                captureMessage.textContent = 'Network error!';
+            }
+        } else {
+            if (captureMessage) {
+                captureMessage.textContent = 'Upload failed!';
+            }
         }
     }
 }

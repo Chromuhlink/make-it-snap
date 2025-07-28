@@ -1,13 +1,29 @@
 import { put } from '@vercel/blob';
 
 export default async function handler(request) {
+  console.log('Upload API: Received request, method:', request.method);
+  
+  // Add CORS headers
+  const headers = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
+  
+  // Handle OPTIONS request for CORS
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { status: 200, headers });
+  }
+  
   // Check for required environment variables
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    console.error('Upload API: BLOB_READ_WRITE_TOKEN not configured');
     return new Response(
       JSON.stringify({ error: 'Blob storage not configured' }),
       {
         status: 500,
-        headers: { 'Content-Type': 'application/json' },
+        headers,
       }
     );
   }
@@ -17,21 +33,23 @@ export default async function handler(request) {
       JSON.stringify({ error: 'Method not allowed' }),
       {
         status: 405,
-        headers: { 'Content-Type': 'application/json' },
+        headers,
       }
     );
   }
 
   try {
+    console.log('Upload API: Parsing request body...');
     const body = await request.json();
     const { image, filename } = body;
 
     if (!image) {
+      console.error('Upload API: No image data provided');
       return new Response(
         JSON.stringify({ error: 'No image data provided' }),
         {
           status: 400,
-          headers: { 'Content-Type': 'application/json' },
+          headers,
         }
       );
     }
@@ -69,21 +87,23 @@ export default async function handler(request) {
       }),
       {
         status: 200,
-        headers: { 'Content-Type': 'application/json' },
+        headers,
       }
     );
 
   } catch (error) {
-    console.error('Upload error:', error);
+    console.error('Upload API: Error:', error);
+    console.error('Upload API: Error stack:', error.stack);
     
     return new Response(
       JSON.stringify({
         error: 'Upload failed',
         message: error.message,
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
       }),
       {
         status: 500,
-        headers: { 'Content-Type': 'application/json' },
+        headers,
       }
     );
   }
