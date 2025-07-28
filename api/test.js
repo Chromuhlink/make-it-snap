@@ -1,4 +1,4 @@
-export default async function handler(request) {
+module.exports = async function handler(request) {
   console.log('Test API: Function started');
   
   const headers = {

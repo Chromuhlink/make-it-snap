@@ -1,7 +1,6 @@
 {
   "name": "make-it-snap",
   "version": "1.0.0",
-  "type": "module",
   "description": "AI-powered photo booth with smile detection",
   "main": "index.html",
   "scripts": {

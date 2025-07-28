@@ -1,4 +1,6 @@
-export default async function handler(request) {
+const { put } = require('@vercel/blob');
+
+module.exports = async function handler(request) {
   console.log('Upload API: Function started, method:', request.method);
   
   // Add CORS headers
@@ -70,10 +72,6 @@ export default async function handler(request) {
     const fileName = filename || `photo-${timestamp}.png`;
     
     console.log('Upload API: Uploading as:', fileName);
-    
-    // Dynamic import to avoid compilation issues
-    console.log('Upload API: Importing @vercel/blob');
-    const { put } = await import('@vercel/blob');
 
     // Upload to Vercel Blob Storage
     const blob = await put(fileName, imageBuffer, {
@@ -114,7 +112,7 @@ export default async function handler(request) {
   }
 }
 
-export const config = {
+module.exports.config = {
   api: {
     bodyParser: {
       sizeLimit: '10mb',

@@ -1,4 +1,6 @@
-export default async function handler(request) {
+const { list } = require('@vercel/blob');
+
+module.exports = async function handler(request) {
   console.log('Gallery API: Function started');
   
   // Add CORS headers
@@ -41,11 +43,6 @@ export default async function handler(request) {
   }
 
   try {
-    console.log('Gallery API: Attempting to import @vercel/blob');
-    
-    // Dynamic import to avoid compilation issues
-    const { list } = await import('@vercel/blob');
-    
     console.log('Gallery API: Starting blob list request');
     
     // List all blobs from Vercel Blob Storage
