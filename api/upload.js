@@ -1,5 +1,3 @@
-import { put } from '@vercel/blob';
-
 export default async function handler(request) {
   console.log('Upload API: Function started, method:', request.method);
   
@@ -58,6 +56,9 @@ export default async function handler(request) {
     }
 
     console.log('Upload API: Processing image upload');
+    
+    // Dynamic import to avoid timeout issues
+    const { put } = await import('@vercel/blob');
     
     // Remove data:image/png;base64, prefix if present
     const base64Data = image.replace(/^data:image\/[a-z]+;base64,/, '');

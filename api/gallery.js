@@ -1,5 +1,3 @@
-import { list } from '@vercel/blob';
-
 export default async function handler(request) {
   console.log('Gallery API: Function started');
   
@@ -44,6 +42,9 @@ export default async function handler(request) {
 
   try {
     console.log('Gallery API: Starting blob list request');
+    
+    // Dynamic import to avoid timeout issues
+    const { list } = await import('@vercel/blob');
     
     // List all blobs from Vercel Blob Storage
     const { blobs } = await list();
