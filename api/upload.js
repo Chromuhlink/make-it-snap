@@ -1,6 +1,6 @@
-const { put } = require('@vercel/blob');
+import { put } from '@vercel/blob';
 
-module.exports = async function handler(request) {
+export default async function handler(request) {
   console.log('Upload API: Function started, method:', request.method);
   
   // Add CORS headers
@@ -112,7 +112,7 @@ module.exports = async function handler(request) {
   }
 }
 
-module.exports.config = {
+export const config = {
   api: {
     bodyParser: {
       sizeLimit: '10mb',

@@ -1,6 +1,6 @@
-const { list } = require('@vercel/blob');
+import { list } from '@vercel/blob';
 
-module.exports = async function handler(request) {
+export default async function handler(request) {
   console.log('Gallery API: Function started');
   
   // Add CORS headers
