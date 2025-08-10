@@ -1,3 +1,5 @@
+const { supabase } = require('../lib/supabase');
+
 export default async function handler(request) {
   console.log('Gallery API: Function started');
   
@@ -14,21 +16,6 @@ export default async function handler(request) {
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers });
   }
-  
-  // Check for required environment variables
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    console.error('Gallery API: BLOB_READ_WRITE_TOKEN not configured');
-    return new Response(
-      JSON.stringify({ 
-        error: 'Blob storage not configured',
-        hasToken: false 
-      }),
-      {
-        status: 500,
-        headers,
-      }
-    );
-  }
 
   if (request.method !== 'GET') {
     return new Response(
@@ -41,34 +28,44 @@ export default async function handler(request) {
   }
 
   try {
-    console.log('Gallery API: Starting blob list request');
+    console.log('Gallery API: Fetching from Supabase storage');
     
-    // Dynamic import to avoid timeout issues
-    const { list } = await import('@vercel/blob');
-    
-    // List all blobs from Vercel Blob Storage
-    const { blobs } = await list();
-    
-    console.log('Gallery API: Found', blobs?.length || 0, 'total blobs');
-    
-    // Filter for photo files and sort by uploadedAt (newest first)
-    const photos = (blobs || [])
-      .filter(blob => blob.pathname.startsWith('photo-'))
-      .sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))
-      .map(blob => ({
-        url: blob.url,
-        filename: blob.pathname,
-        uploadedAt: blob.uploadedAt,
-        size: blob.size,
-      }));
+    // List all files from Supabase storage
+    const { data: files, error } = await supabase.storage
+      .from('photos')
+      .list('', {
+        limit: 100,
+        offset: 0,
+        sortBy: { column: 'created_at', order: 'desc' }
+      });
 
-    console.log('Gallery API: Filtered to', photos.length, 'photos');
+    if (error) {
+      console.error('Gallery API: Supabase error:', error);
+      throw error;
+    }
+
+    // Transform files into photo objects with public URLs
+    const photos = files.map(file => {
+      const { data: { publicUrl } } = supabase.storage
+        .from('photos')
+        .getPublicUrl(file.name);
+      
+      return {
+        url: publicUrl,
+        filename: file.name,
+        uploadedAt: file.created_at,
+        size: file.metadata?.size || 0,
+      };
+    });
+
+    console.log('Gallery API: Found', photos.length, 'photos in Supabase');
 
     return new Response(
       JSON.stringify({
         success: true,
         photos,
         count: photos.length,
+        storage: 'supabase'
       }),
       {
         status: 200,
@@ -78,13 +75,11 @@ export default async function handler(request) {
 
   } catch (error) {
     console.error('Gallery API: Error:', error);
-    console.error('Gallery API: Error stack:', error.stack);
     
     return new Response(
       JSON.stringify({
         error: 'Failed to fetch gallery',
         message: error.message,
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
       }),
       {
         status: 500,

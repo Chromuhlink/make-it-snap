@@ -1,3 +1,5 @@
+const { supabase } = require('../lib/supabase');
+
 export default async function handler(request) {
   console.log('Upload API: Function started, method:', request.method);
   
@@ -12,21 +14,6 @@ export default async function handler(request) {
   // Handle OPTIONS request for CORS
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers });
-  }
-  
-  // Check for required environment variables
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    console.error('Upload API: BLOB_READ_WRITE_TOKEN not configured');
-    return new Response(
-      JSON.stringify({ 
-        error: 'Blob storage not configured',
-        hasToken: false 
-      }),
-      {
-        status: 500,
-        headers,
-      }
-    );
   }
 
   if (request.method !== 'POST') {
@@ -57,37 +44,43 @@ export default async function handler(request) {
 
     console.log('Upload API: Processing image upload');
     
-    // Dynamic import to avoid timeout issues
-    const { put } = await import('@vercel/blob');
-    
-    // Remove data:image/png;base64, prefix if present
-    const base64Data = image.replace(/^data:image\/[a-z]+;base64,/, '');
-    
-    // Convert base64 to buffer
-    const imageBuffer = Buffer.from(base64Data, 'base64');
-    
-    console.log('Upload API: Image buffer size:', imageBuffer.length);
-    
     // Generate timestamp filename if not provided
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const fileName = filename || `photo-${timestamp}.png`;
     
-    console.log('Upload API: Uploading as:', fileName);
-
-    // Upload to Vercel Blob Storage
-    const blob = await put(fileName, imageBuffer, {
-      access: 'public',
-      contentType: 'image/png',
-    });
+    // Convert base64 to buffer
+    const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
     
-    console.log('Upload API: Success! Blob URL:', blob.url);
+    console.log('Upload API: Uploading to Supabase storage...');
+    
+    // Upload to Supabase storage
+    const { data, error } = await supabase.storage
+      .from('photos')
+      .upload(fileName, buffer, {
+        contentType: 'image/png',
+        upsert: false
+      });
+
+    if (error) {
+      console.error('Upload API: Supabase error:', error);
+      throw error;
+    }
+    
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('photos')
+      .getPublicUrl(fileName);
+    
+    console.log('Upload API: Success! Stored in Supabase');
 
     return new Response(
       JSON.stringify({
         success: true,
-        url: blob.url,
+        url: publicUrl,
         filename: fileName,
-        size: imageBuffer.length,
+        path: data.path,
+        storage: 'supabase'
       }),
       {
         status: 200,
@@ -97,13 +90,11 @@ export default async function handler(request) {
 
   } catch (error) {
     console.error('Upload API: Error:', error);
-    console.error('Upload API: Error stack:', error.stack);
     
     return new Response(
       JSON.stringify({
         error: 'Upload failed',
         message: error.message,
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
       }),
       {
         status: 500,
