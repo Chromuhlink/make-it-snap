@@ -628,8 +628,8 @@ function displayGallery(photos) {
     }
     
     galleryGrid.innerHTML = photos.map(photo => {
-        // Create thumbnail URL with Vercel image optimization
-        const thumbnailUrl = `${photo.url}?width=300&height=225&fit=cover&quality=80`;
+        // Create thumbnail URL using Vercel image optimization service
+        const thumbnailUrl = `/_vercel/image?url=${encodeURIComponent(photo.url)}&w=300&h=225&fit=cover&q=80`;
         
         return `
             <div class="gallery-item" onclick="openPhoto('${photo.url}')">
