@@ -1,11 +1,11 @@
-module.exports = async function handler(request) {
+export default async function handler(request) {
   console.log('Test API: Function started');
-  
+
   const headers = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
   };
-  
+
   return new Response(
     JSON.stringify({
       success: true,
@@ -19,4 +19,5 @@ module.exports = async function handler(request) {
       headers,
     }
   );
-} 
+}
+

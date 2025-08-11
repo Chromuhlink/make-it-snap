@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "AI-powered photo booth with smile detection",
   "main": "index.html",
+  "type": "module",
   "scripts": {
     "dev": "python3 -m http.server 3000 --directory public",
     "vercel-dev": "vercel dev",
