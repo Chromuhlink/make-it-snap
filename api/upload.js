@@ -20,16 +20,36 @@ module.exports = async function handler(req, res) {
 
   try {
     console.log('Upload API: Parsing request body...');
+    console.log('Upload API: Content-Type:', req.headers['content-type']);
+    console.log('Upload API: Body type:', typeof req.body);
 
     let body = req.body;
-    if (!body) {
+    
+    // Handle different body parsing scenarios
+    if (!body || Object.keys(body).length === 0) {
+      console.log('Upload API: Body empty, parsing raw chunks...');
       // Parse raw body if not already parsed
       const chunks = [];
       for await (const chunk of req) chunks.push(chunk);
-      const raw = Buffer.concat(chunks).toString();
-      body = raw ? JSON.parse(raw) : {};
+      const raw = Buffer.concat(chunks).toString('utf8');
+      console.log('Upload API: Raw body length:', raw.length);
+      console.log('Upload API: Raw body preview:', raw.substring(0, 100));
+      
+      if (raw) {
+        try {
+          body = JSON.parse(raw);
+        } catch (parseError) {
+          console.error('Upload API: JSON parse error:', parseError.message);
+          console.log('Upload API: Raw data appears to be:', raw.substring(0, 50));
+          res.status(400).json({ error: 'Invalid JSON in request body' });
+          return;
+        }
+      } else {
+        body = {};
+      }
     }
 
+    console.log('Upload API: Parsed body keys:', Object.keys(body || {}));
     const { image, filename } = body || {};
 
     if (!image) {

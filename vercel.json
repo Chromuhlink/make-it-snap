@@ -3,5 +3,8 @@
     "api/*.js": {
       "maxDuration": 30
     }
+  },
+  "limits": {
+    "duration": 10000
   }
 } 
