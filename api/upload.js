@@ -1,6 +1,6 @@
 const { supabase } = require('../lib/supabase');
 
-export default async function handler(request) {
+module.exports = async function handler(request) {
   console.log('Upload API: Function started, method:', request.method);
   
   // Add CORS headers
@@ -104,7 +104,7 @@ export default async function handler(request) {
   }
 }
 
-export const config = {
+module.exports.config = {
   api: {
     bodyParser: {
       sizeLimit: '10mb',
