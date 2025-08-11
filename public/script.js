@@ -621,13 +621,16 @@ async function fetchGallery() {
 
 function displayGallery(photos) {
     const galleryGrid = document.getElementById('gallery-grid');
-    
-    if (photos.length === 0) {
+
+    // Guard against null/undefined or non-array inputs
+    const photoArray = Array.isArray(photos) ? photos : [];
+
+    if (photoArray.length === 0) {
         galleryGrid.innerHTML = '<div class="gallery-empty">No photos yet! Take your first snap! 📸</div>';
         return;
     }
-    
-    galleryGrid.innerHTML = photos.map(photo => {
+
+    galleryGrid.innerHTML = photoArray.map(photo => {
         // Create thumbnail URL with Vercel image optimization
         const thumbnailUrl = `${photo.url}?width=300&height=225&fit=cover&quality=80`;
         
