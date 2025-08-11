@@ -4,8 +4,7 @@
   "description": "AI-powered photo booth with smile detection",
   "main": "index.html",
   "scripts": {
-    "dev": "python3 -m http.server 3000 --directory public",
-    "vercel-dev": "vercel dev",
+    "dev": "vercel dev",
     "build": "echo 'Static files are in public directory'",
     "deploy": "vercel"
   },
