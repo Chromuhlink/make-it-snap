@@ -488,20 +488,21 @@ async function uploadToGallery() {
             captureMessage.textContent = 'Uploading...';
         }
         
-        // Create a timeout promise
-        const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('Upload timeout')), 10000); // 10 second timeout
+        // Create an AbortController to handle timeouts
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+            console.log('Client: Upload taking too long, aborting...');
+            controller.abort();
+        }, 10000); // 10 second timeout
+
+        const response = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: imageData }),
+            signal: controller.signal
         });
-        
-        // Race between fetch and timeout
-        const response = await Promise.race([
-            fetch('/api/upload', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image: imageData })
-            }),
-            timeoutPromise
-        ]);
+
+        clearTimeout(timeoutId);
         
         console.log('Client: Upload response status:', response.status);
         
@@ -540,7 +541,7 @@ async function uploadToGallery() {
         console.error('Client: Upload error:', error);
         const captureMessage = document.getElementById('capture-message');
         
-        if (error.message === 'Upload timeout') {
+        if (error.name === 'AbortError' || (error instanceof DOMException && error.name === 'AbortError')) {
             console.error('Client: Upload timed out after 10 seconds');
             if (captureMessage) {
                 captureMessage.textContent = 'Upload timed out!';
