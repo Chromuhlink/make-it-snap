@@ -1,6 +1,6 @@
 const { supabase } = require('../lib/supabase');
 
-export default async function handler(request) {
+module.exports = async function handler(request) {
   console.log('Gallery API: Function started');
   
   // Add CORS headers
