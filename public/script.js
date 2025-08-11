@@ -278,8 +278,8 @@ function resetCamera() {
 }
 
 async function detectSmile() {
-    if (!modelsLoaded || video.readyState !== 4) {
-        console.log('Detection: Not ready - Models loaded:', modelsLoaded, 'Video ready state:', video.readyState);
+    if (!modelsLoaded || video.readyState !== 4 || document.hidden) {
+        console.log('Detection: Not ready - Models loaded:', modelsLoaded, 'Video ready state:', video.readyState, 'Page visible:', !document.hidden);
         return;
     }
     
@@ -478,8 +478,8 @@ async function uploadToGallery() {
     try {
         console.log('Client: Starting photo upload...');
         
-        // Convert canvas to base64
-        const imageData = canvas.toDataURL('image/png');
+        // Convert canvas to base64 with quality control
+        const imageData = canvas.toDataURL('image/jpeg', 0.9); // Use JPEG with 90% quality for smaller size
         console.log('Client: Canvas data size:', imageData.length);
         
         // Add visual feedback during upload
@@ -675,10 +675,13 @@ function startGalleryAutoRefresh() {
         clearInterval(galleryRefreshInterval);
     }
     
-    galleryRefreshInterval = setInterval(() => {
-        console.log('Gallery: Auto-refreshing...');
-        fetchGallery();
-    }, 10000);
+    // Only set interval if page is visible
+    if (!document.hidden) {
+        galleryRefreshInterval = setInterval(() => {
+            console.log('Gallery: Auto-refreshing...');
+            fetchGallery();
+        }, 10000);
+    }
 }
 
 // Add manual refresh capability
@@ -698,6 +701,69 @@ function addGalleryRefreshButton() {
 }
 
 document.addEventListener('keydown', handleKeyPress);
+
+// Cleanup function to prevent memory leaks
+function cleanup() {
+    console.log('App: Cleaning up resources...');
+    
+    // Stop face detection
+    if (detectionInterval) {
+        clearInterval(detectionInterval);
+        detectionInterval = null;
+    }
+    
+    // Stop gallery refresh
+    if (galleryRefreshInterval) {
+        clearInterval(galleryRefreshInterval);
+        galleryRefreshInterval = null;
+    }
+    
+    // Stop countdown timer
+    if (countdownTimer) {
+        clearInterval(countdownTimer);
+        countdownTimer = null;
+    }
+    
+    // Stop camera stream
+    if (stream) {
+        stream.getTracks().forEach(track => {
+            track.stop();
+        });
+        stream = null;
+    }
+    
+    // Clear canvases to free memory
+    if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    if (overlayCtx) {
+        overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+    }
+    
+    console.log('App: Cleanup complete');
+}
+
+// Handle page unload
+window.addEventListener('beforeunload', cleanup);
+window.addEventListener('unload', cleanup);
+
+// Handle visibility changes (tab switching)
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        console.log('App: Page hidden, pausing detection');
+        stopSmileDetection();
+        if (galleryRefreshInterval) {
+            clearInterval(galleryRefreshInterval);
+            galleryRefreshInterval = null;
+        }
+    } else {
+        console.log('App: Page visible, resuming detection');
+        if (modelsLoaded && !detectionInterval) {
+            startSmileDetection();
+        }
+        startGalleryAutoRefresh();
+    }
+});
 
 // Initialize everything when page loads
 console.log('App: Starting camera and gallery systems...');

@@ -1,113 +1,135 @@
 const { supabase } = require('../lib/supabase');
+const { setCorsHeaders } = require('../lib/cors');
 
-export default async function handler(request) {
-  console.log('Upload API: Function started, method:', request.method);
-  
-  // Add CORS headers
-  const headers = {
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-  };
-  
-  // Handle OPTIONS request for CORS
-  if (request.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers });
+module.exports = async function handler(req, res) {
+  console.log('Upload API: Function started, method:', req.method);
+
+  // Set CORS headers with restricted origins
+  res.setHeader('Content-Type', 'application/json');
+  setCorsHeaders(req, res, 'POST, OPTIONS');
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
   }
 
-  if (request.method !== 'POST') {
-    return new Response(
-      JSON.stringify({ error: 'Method not allowed' }),
-      {
-        status: 405,
-        headers,
-      }
-    );
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
   }
 
   try {
     console.log('Upload API: Parsing request body...');
-    const body = await request.json();
-    const { image, filename } = body;
+
+    let body = req.body;
+    if (!body) {
+      // Parse raw body if not already parsed
+      const chunks = [];
+      for await (const chunk of req) chunks.push(chunk);
+      const raw = Buffer.concat(chunks).toString();
+      body = raw ? JSON.parse(raw) : {};
+    }
+
+    const { image, filename } = body || {};
 
     if (!image) {
       console.error('Upload API: No image data provided');
-      return new Response(
-        JSON.stringify({ error: 'No image data provided' }),
-        {
-          status: 400,
-          headers,
-        }
-      );
+      res.status(400).json({ error: 'No image data provided' });
+      return;
+    }
+
+    // Validate image format
+    if (!image.startsWith('data:image/')) {
+      console.error('Upload API: Invalid image format');
+      res.status(400).json({ error: 'Invalid image format. Must be a data URI.' });
+      return;
+    }
+
+    // Extract and validate image type
+    const matches = image.match(/^data:image\/(png|jpeg|jpg|gif|webp);base64,/);
+    if (!matches) {
+      console.error('Upload API: Unsupported image type');
+      res.status(400).json({ error: 'Unsupported image type. Only PNG, JPEG, GIF, and WebP are allowed.' });
+      return;
+    }
+    const imageType = matches[1];
+
+    // Check file size (max 5MB)
+    const base64Length = image.replace(/^data:image\/\w+;base64,/, '').length;
+    const estimatedSize = (base64Length * 3) / 4; // Approximate size in bytes
+    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+    
+    if (estimatedSize > maxSize) {
+      console.error('Upload API: File too large:', estimatedSize, 'bytes');
+      res.status(400).json({ 
+        error: 'File too large. Maximum size is 5MB.',
+        size: estimatedSize,
+        maxSize: maxSize
+      });
+      return;
+    }
+
+    // Validate filename if provided
+    if (filename) {
+      const invalidChars = /[<>:"|?*\/\\]/g;
+      if (invalidChars.test(filename)) {
+        console.error('Upload API: Invalid filename characters');
+        res.status(400).json({ error: 'Filename contains invalid characters.' });
+        return;
+      }
     }
 
     console.log('Upload API: Processing image upload');
-    
-    // Generate timestamp filename if not provided
+    console.log('Upload API: Image type:', imageType, 'Size:', Math.round(estimatedSize / 1024), 'KB');
+
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const fileName = filename || `photo-${timestamp}.png`;
-    
-    // Convert base64 to buffer
+    const safeFilename = filename ? filename.replace(/[^a-zA-Z0-9._-]/g, '_') : null;
+    const fileName = safeFilename || `photo-${timestamp}.${imageType}`;
+
+    // Convert base64 to Node Buffer
     const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
     const buffer = Buffer.from(base64Data, 'base64');
     
+    // Double-check actual buffer size
+    if (buffer.length > maxSize) {
+      console.error('Upload API: Buffer too large after decoding');
+      res.status(400).json({ error: 'File too large after processing.' });
+      return;
+    }
+
     console.log('Upload API: Uploading to Supabase storage...');
-    
-    // Upload to Supabase storage
+
     const { data, error } = await supabase.storage
       .from('photos')
       .upload(fileName, buffer, {
-        contentType: 'image/png',
-        upsert: false
+        contentType: `image/${imageType}`,
+        upsert: false,
       });
 
     if (error) {
       console.error('Upload API: Supabase error:', error);
       throw error;
     }
-    
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
+
+    const { data: publicData } = supabase.storage
       .from('photos')
       .getPublicUrl(fileName);
-    
+
+    const publicUrl = publicData?.publicUrl;
+
     console.log('Upload API: Success! Stored in Supabase');
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        url: publicUrl,
-        filename: fileName,
-        path: data.path,
-        storage: 'supabase'
-      }),
-      {
-        status: 200,
-        headers,
-      }
-    );
-
+    res.status(200).json({
+      success: true,
+      url: publicUrl,
+      filename: fileName,
+      path: data.path,
+      storage: 'supabase',
+    });
   } catch (error) {
     console.error('Upload API: Error:', error);
-    
-    return new Response(
-      JSON.stringify({
-        error: 'Upload failed',
-        message: error.message,
-      }),
-      {
-        status: 500,
-        headers,
-      }
-    );
+    res.status(500).json({
+      error: 'Upload failed',
+      message: error.message,
+    });
   }
-}
-
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb',
-    },
-  },
 };

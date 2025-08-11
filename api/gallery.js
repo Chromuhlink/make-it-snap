@@ -1,42 +1,33 @@
 const { supabase } = require('../lib/supabase');
+const { setCorsHeaders } = require('../lib/cors');
 
-export default async function handler(request) {
+module.exports = async function handler(req, res) {
   console.log('Gallery API: Function started');
-  
-  // Add CORS headers
-  const headers = {
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Cache-Control': 'no-cache, no-store, must-revalidate',
-  };
-  
-  // Handle OPTIONS request for CORS
-  if (request.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers });
+
+  // Set CORS headers with restricted origins
+  res.setHeader('Content-Type', 'application/json');
+  setCorsHeaders(req, res, 'GET, OPTIONS');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
   }
 
-  if (request.method !== 'GET') {
-    return new Response(
-      JSON.stringify({ error: 'Method not allowed' }),
-      {
-        status: 405,
-        headers,
-      }
-    );
+  if (req.method !== 'GET') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
   }
 
   try {
     console.log('Gallery API: Fetching from Supabase storage');
-    
-    // List all files from Supabase storage
+
     const { data: files, error } = await supabase.storage
       .from('photos')
       .list('', {
         limit: 100,
         offset: 0,
-        sortBy: { column: 'created_at', order: 'desc' }
+        sortBy: { column: 'created_at', order: 'desc' },
       });
 
     if (error) {
@@ -44,14 +35,13 @@ export default async function handler(request) {
       throw error;
     }
 
-    // Transform files into photo objects with public URLs
-    const photos = files.map(file => {
-      const { data: { publicUrl } } = supabase.storage
+    const photos = (files || []).map((file) => {
+      const { data: publicData } = supabase.storage
         .from('photos')
         .getPublicUrl(file.name);
-      
+
       return {
-        url: publicUrl,
+        url: publicData?.publicUrl,
         filename: file.name,
         uploadedAt: file.created_at,
         size: file.metadata?.size || 0,
@@ -59,32 +49,17 @@ export default async function handler(request) {
     });
 
     console.log('Gallery API: Found', photos.length, 'photos in Supabase');
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        photos,
-        count: photos.length,
-        storage: 'supabase'
-      }),
-      {
-        status: 200,
-        headers,
-      }
-    );
-
+    res.status(200).json({
+      success: true,
+      photos,
+      count: photos.length,
+      storage: 'supabase',
+    });
   } catch (error) {
     console.error('Gallery API: Error:', error);
-    
-    return new Response(
-      JSON.stringify({
-        error: 'Failed to fetch gallery',
-        message: error.message,
-      }),
-      {
-        status: 500,
-        headers,
-      }
-    );
+    res.status(500).json({
+      error: 'Failed to fetch gallery',
+      message: error.message,
+    });
   }
-}
+};

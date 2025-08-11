@@ -10,15 +10,16 @@ async function testSupabase() {
   
   // Check environment variables
   console.log('Environment variables:');
-  console.log('SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? '✓ Set' : '✗ Missing');
-  console.log('SUPABASE_ANON_KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '✓ Set' : '✗ Missing');
+  console.log('SUPABASE_URL:', process.env.SUPABASE_URL ? '✓ Set' : '✗ Missing');
+  console.log('SUPABASE_ANON_KEY:', process.env.SUPABASE_ANON_KEY ? '✓ Set' : '✗ Missing');
   console.log('');
   
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
     console.error('❌ Missing Supabase environment variables!');
     console.log('\nPlease ensure you have a .env.local file with:');
-    console.log('NEXT_PUBLIC_SUPABASE_URL=your_supabase_url');
-    console.log('NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key');
+    console.log('SUPABASE_URL=your_supabase_url');
+    console.log('SUPABASE_ANON_KEY=your_anon_key');
+    console.log('\nNote: We removed NEXT_PUBLIC_ prefix for security.');
     process.exit(1);
   }
   
