@@ -1,10 +1,19 @@
 {
   "functions": {
-    "api/*.js": {
-      "maxDuration": 30
+    "api/upload.js": {
+      "maxDuration": 30,
+      "memory": 1024
+    },
+    "api/gallery.js": {
+      "maxDuration": 10,
+      "memory": 512
+    },
+    "api/debug.js": {
+      "maxDuration": 10,
+      "memory": 512
     }
   },
-  "limits": {
-    "duration": 10000
+  "env": {
+    "SUPABASE_BUCKET": "photos"
   }
 } 

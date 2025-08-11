@@ -1,4 +1,4 @@
-const { supabase } = require('../lib/supabase');
+const { supabase, bucketName } = require('../lib/supabase');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
@@ -12,7 +12,7 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    console.log('Debug: Starting Supabase connection test - v2...');
+    console.log('Debug: Starting Supabase connection test...');
 
     // Check environment variables
     const hasUrl = !!process.env.SUPABASE_URL;
@@ -29,9 +29,9 @@ module.exports = async function handler(req, res) {
     console.log('Debug: URL prefix:', urlPrefix);
     console.log('Debug: Key prefix:', keyPrefix);
 
-    // Test Supabase connection by listing files in photos bucket
+    // Test Supabase connection by listing files in bucket
     const { data: listData, error: listError } = await supabase.storage
-      .from('photos')
+      .from(bucketName)
       .list('', { limit: 5 });
 
     if (listError) {
@@ -50,6 +50,7 @@ module.exports = async function handler(req, res) {
       hasKey,
       urlPrefix,
       keyPrefix,
+      bucketName,
       photoCount: listData?.length || 0,
       photos: listData || [],
       buckets: bucketData || [],

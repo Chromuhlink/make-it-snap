@@ -1,4 +1,4 @@
-const { supabase } = require('../lib/supabase');
+const { supabase, bucketName } = require('../lib/supabase');
 const { setCorsHeaders } = require('../lib/cors');
 
 module.exports = async function handler(req, res) {
@@ -19,23 +19,18 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    console.log('Upload API: Starting request processing...');
-    console.log('Upload API: Method:', req.method);
-    console.log('Upload API: Content-Type:', req.headers['content-type']);
-    console.log('Upload API: Body type:', typeof req.body);
-    console.log('Upload API: Body exists:', !!req.body);
+    console.log('Upload API: Parsing request body...');
 
-    // Vercel should automatically parse JSON bodies
-    const body = req.body;
-    
+    let body = req.body;
     if (!body) {
-      console.error('Upload API: No body received');
-      res.status(400).json({ error: 'No request body received' });
-      return;
+      // Parse raw body if not already parsed
+      const chunks = [];
+      for await (const chunk of req) chunks.push(chunk);
+      const raw = Buffer.concat(chunks).toString();
+      body = raw ? JSON.parse(raw) : {};
     }
 
-    console.log('Upload API: Body keys:', Object.keys(body));
-    const { image, filename } = body;
+    const { image, filename } = body || {};
 
     if (!image) {
       console.error('Upload API: No image data provided');
@@ -102,10 +97,10 @@ module.exports = async function handler(req, res) {
       return;
     }
 
-    console.log('Upload API: Uploading to Supabase storage...');
+    console.log(`Upload API: Uploading to Supabase storage bucket '${bucketName}'...`);
 
     const { data, error } = await supabase.storage
-      .from('photos')
+      .from(bucketName)
       .upload(fileName, buffer, {
         contentType: `image/${imageType}`,
         upsert: false,
@@ -117,7 +112,7 @@ module.exports = async function handler(req, res) {
     }
 
     const { data: publicData } = supabase.storage
-      .from('photos')
+      .from(bucketName)
       .getPublicUrl(fileName);
 
     const publicUrl = publicData?.publicUrl;

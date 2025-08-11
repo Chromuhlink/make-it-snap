@@ -1,4 +1,4 @@
-const { supabase } = require('../lib/supabase');
+const { supabase, bucketName } = require('../lib/supabase');
 const { setCorsHeaders } = require('../lib/cors');
 
 module.exports = async function handler(req, res) {
@@ -20,10 +20,10 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    console.log('Gallery API: Fetching from Supabase storage');
+    console.log(`Gallery API: Fetching from Supabase storage bucket '${bucketName}'`);
 
     const { data: files, error } = await supabase.storage
-      .from('photos')
+      .from(bucketName)
       .list('', {
         limit: 100,
         offset: 0,
@@ -37,7 +37,7 @@ module.exports = async function handler(req, res) {
 
     const photos = (files || []).map((file) => {
       const { data: publicData } = supabase.storage
-        .from('photos')
+        .from(bucketName)
         .getPublicUrl(file.name);
 
       return {

@@ -493,9 +493,9 @@ async function uploadToGallery() {
             setTimeout(() => reject(new Error('Upload timeout')), 10000); // 10 second timeout
         });
         
-        // Race between fetch and timeout - using test endpoint temporarily
+        // Race between fetch and timeout
         const response = await Promise.race([
-            fetch('/api/test-upload', {
+            fetch('/api/upload', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ image: imageData })
@@ -628,12 +628,10 @@ function displayGallery(photos) {
     }
     
     galleryGrid.innerHTML = photos.map(photo => {
-        // Create thumbnail URL with Vercel image optimization
-        const thumbnailUrl = `${photo.url}?width=300&height=225&fit=cover&quality=80`;
-        
+        // Use direct Supabase URLs for images
         return `
             <div class="gallery-item" onclick="openPhoto('${photo.url}')">
-                <img src="${thumbnailUrl}" alt="${photo.filename}" loading="lazy">
+                <img src="${photo.url}" alt="${photo.filename}" loading="lazy">
                 <div class="photo-info">
                     <div>${new Date(photo.uploadedAt).toLocaleDateString()}</div>
                     <div>${new Date(photo.uploadedAt).toLocaleTimeString()}</div>
