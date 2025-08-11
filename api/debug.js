@@ -12,7 +12,7 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    console.log('Debug: Starting Supabase connection test...');
+    console.log('Debug: Starting Supabase connection test - v2...');
 
     // Check environment variables
     const hasUrl = !!process.env.SUPABASE_URL;
