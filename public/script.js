@@ -493,9 +493,9 @@ async function uploadToGallery() {
             setTimeout(() => reject(new Error('Upload timeout')), 10000); // 10 second timeout
         });
         
-        // Race between fetch and timeout
+        // Race between fetch and timeout - using test endpoint temporarily
         const response = await Promise.race([
-            fetch('/api/upload', {
+            fetch('/api/test-upload', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ image: imageData })

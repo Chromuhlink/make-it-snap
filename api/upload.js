@@ -19,38 +19,23 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    console.log('Upload API: Parsing request body...');
+    console.log('Upload API: Starting request processing...');
+    console.log('Upload API: Method:', req.method);
     console.log('Upload API: Content-Type:', req.headers['content-type']);
     console.log('Upload API: Body type:', typeof req.body);
+    console.log('Upload API: Body exists:', !!req.body);
 
-    let body = req.body;
+    // Vercel should automatically parse JSON bodies
+    const body = req.body;
     
-    // Handle different body parsing scenarios
-    if (!body || Object.keys(body).length === 0) {
-      console.log('Upload API: Body empty, parsing raw chunks...');
-      // Parse raw body if not already parsed
-      const chunks = [];
-      for await (const chunk of req) chunks.push(chunk);
-      const raw = Buffer.concat(chunks).toString('utf8');
-      console.log('Upload API: Raw body length:', raw.length);
-      console.log('Upload API: Raw body preview:', raw.substring(0, 100));
-      
-      if (raw) {
-        try {
-          body = JSON.parse(raw);
-        } catch (parseError) {
-          console.error('Upload API: JSON parse error:', parseError.message);
-          console.log('Upload API: Raw data appears to be:', raw.substring(0, 50));
-          res.status(400).json({ error: 'Invalid JSON in request body' });
-          return;
-        }
-      } else {
-        body = {};
-      }
+    if (!body) {
+      console.error('Upload API: No body received');
+      res.status(400).json({ error: 'No request body received' });
+      return;
     }
 
-    console.log('Upload API: Parsed body keys:', Object.keys(body || {}));
-    const { image, filename } = body || {};
+    console.log('Upload API: Body keys:', Object.keys(body));
+    const { image, filename } = body;
 
     if (!image) {
       console.error('Upload API: No image data provided');
