@@ -483,7 +483,6 @@ async function uploadToGallery() {
         console.log('Client: Canvas data size:', imageData.length);
         
         // Add visual feedback during upload
-        const captureMessage = document.getElementById('capture-message');
         if (captureMessage) {
             captureMessage.textContent = 'Uploading...';
         }
@@ -538,8 +537,6 @@ async function uploadToGallery() {
         }
     } catch (error) {
         console.error('Client: Upload error:', error);
-        const captureMessage = document.getElementById('capture-message');
-        
         if (error.message === 'Upload timeout') {
             console.error('Client: Upload timed out after 10 seconds');
             if (captureMessage) {
