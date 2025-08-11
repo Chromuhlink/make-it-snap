@@ -1,4 +1,4 @@
-const { supabase } = require('../lib/supabase');
+import { supabase } from '../lib/supabase.js';
 
 export default async function handler(request) {
   console.log('Gallery API: Function started');
