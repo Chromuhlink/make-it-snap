@@ -4,13 +4,15 @@
   "description": "AI-powered photo booth with smile detection",
   "main": "index.html",
   "scripts": {
-    "dev": "vercel dev",
+    "dev": "python3 -m http.server 3000 --directory public",
+    "vercel-dev": "vercel dev",
     "build": "echo 'Static files are in public directory'",
     "deploy": "vercel"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.54.0",
-    "@vercel/blob": "^1.1.1"
+    "@vercel/blob": "^1.1.1",
+    "dotenv": "^17.2.1"
   },
   "devDependencies": {
     "vercel": "^44.6.3"
