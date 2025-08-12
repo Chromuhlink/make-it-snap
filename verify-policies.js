@@ -5,8 +5,10 @@
  * This script helps verify that your storage bucket policies are correctly configured
  */
 
-require('dotenv').config({ path: '.env.local' });
-const { supabase } = require('./lib/supabase');
+import dotenv from 'dotenv';
+import { supabase } from './lib/supabase.js';
+
+dotenv.config({ path: '.env.local' });
 
 async function verifyPolicies() {
   console.log('🔒 Verifying Supabase Storage Policies...\n');

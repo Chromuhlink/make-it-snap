@@ -1,4 +1,4 @@
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   console.log('Test API: Function started');
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -9,4 +9,4 @@ module.exports = async function handler(req, res) {
     hasBlob: !!process.env.BLOB_READ_WRITE_TOKEN,
     method: req.method,
   });
-};
+}
