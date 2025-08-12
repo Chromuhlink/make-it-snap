@@ -1,7 +1,7 @@
-const { supabase, bucketName } = require('../lib/supabase');
-const { setCorsHeaders } = require('../lib/cors');
+import { supabase, bucketName } from '../lib/supabase.js';
+import { setCorsHeaders } from '../lib/cors.js';
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   console.log('Gallery API: Function started');
 
   // Set CORS headers with restricted origins
@@ -62,4 +62,4 @@ module.exports = async function handler(req, res) {
       message: error.message,
     });
   }
-};
+}
