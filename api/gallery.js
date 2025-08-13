@@ -34,8 +34,22 @@ module.exports = async function handler(req, res) {
       console.error('Gallery API: Supabase error:', error);
       throw error;
     }
+    if (files == null) {
+      console.warn('Gallery API: no files returned from Supabase');
+      res.status(200).json({ success: true, photos: [], count: 0, storage: 'supabase' });
+      return;
+    }
 
-    const photos = (files || []).map((file) => {
+    if (!Array.isArray(files)) {
+      console.error('Gallery API: Unexpected files value:', files);
+      res.status(500).json({
+        error: 'Unexpected response from storage',
+        message: 'Files is not an array',
+      });
+      return;
+    }
+
+    const photos = files.map((file) => {
       const { data: publicData } = supabase.storage
         .from(bucketName)
         .getPublicUrl(file.name);
