@@ -5,6 +5,8 @@ const captureBtn = document.getElementById('capture-btn');
 const captureMessage = document.getElementById('capture-message');
 const saveControls = document.getElementById('save-controls');
 const countdownDisplay = document.getElementById('countdown-display');
+const timerDisplay = document.getElementById('timer-display');
+const startCameraBtn = document.getElementById('start-camera-btn');
 const ctx = canvas.getContext('2d');
 const overlayCtx = overlayCanvas.getContext('2d');
 
@@ -14,6 +16,9 @@ let detectionInterval = null;
 let shutterAudio = null;
 let countdownTimer = null;
 let isCountingDown = false;
+let cameraTimer = null;
+let cameraTimeRemaining = 60;
+let cameraActive = false;
 
 function createShutterSound() {
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -89,12 +94,18 @@ async function loadModels() {
     }
 }
 
-async function startCamera() {
+async function initializeCamera() {
     try {
-        console.log('Camera: Starting camera initialization...');
+        console.log('Camera: Initializing camera in grayscale mode...');
         
-        // Ensure countdown is hidden on startup
+        // Show camera but keep it grayscale (no active class)
+        video.style.display = 'block';
+        overlayCanvas.style.display = 'block';
+        video.classList.remove('active'); // Ensure grayscale
+        
+        // Ensure countdown and timer are hidden on startup
         countdownDisplay.style.display = 'none';
+        timerDisplay.style.display = 'none';
         
         // Hide manual capture button since we're using automatic smile detection
         if (captureBtn) {
@@ -149,15 +160,8 @@ async function startCamera() {
             console.log('Camera: Loading face detection models...');
             await loadModels();
             
-            // Start detection immediately if models loaded
-            if (modelsLoaded) {
-                console.log('Camera: Models loaded successfully, starting smile detection...');
-                startSmileDetection();
-            } else {
-                console.error('Camera: Models failed to load, cannot start smile detection');
-                // Show user-friendly error
-                alert('Face detection models could not be loaded. Please check your internet connection and refresh the page.');
-            }
+            // Camera is ready but inactive - no detection, no timer
+            console.log('Camera: Ready in grayscale mode. Press Play to start session.');
         };
         
         video.addEventListener('loadedmetadata', handleVideoReady);
@@ -197,11 +201,43 @@ async function startCamera() {
         }
         
         alert(errorMessage);
+        
+        // Disable button if camera fails
+        startCameraBtn.disabled = true;
+        startCameraBtn.textContent = 'Camera Unavailable';
     }
+}
+
+function startCameraSession() {
+    console.log('Session: Starting camera session...');
+    
+    // Switch from grayscale to color
+    video.classList.add('active');
+    
+    // Disable button during session
+    startCameraBtn.disabled = true;
+    
+    // Start smile detection only after pressing play
+    if (modelsLoaded) {
+        console.log('Session: Starting smile detection...');
+        startSmileDetection();
+    } else {
+        console.error('Session: Models not loaded, cannot start smile detection');
+        alert('Face detection models are not ready. Please refresh the page.');
+        return;
+    }
+    
+    // Start the 60-second timer
+    startCameraTimer();
+    
+    cameraActive = true;
 }
 
 async function capturePhoto() {
     console.log('Capture: Starting photo capture');
+    
+    // Stop the camera timer when photo is captured
+    stopCameraTimer();
     
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
@@ -244,21 +280,34 @@ async function capturePhoto() {
 }
 
 function resetCamera() {
-    console.log('Reset: Resetting camera to initial state');
+    console.log('Reset: Ending camera session, returning to grayscale...');
     
-    // Hide captured image and show video
+    // Stop camera timer if running
+    stopCameraTimer();
+    
+    // Stop smile detection - no photos can be taken in grayscale mode
+    stopSmileDetection();
+    
+    // Return to grayscale mode (inactive state)
+    video.classList.remove('active');
+    
+    // Show video, hide canvas
     canvas.style.display = 'none';
     video.style.display = 'block';
     overlayCanvas.style.display = 'block';
     
+    // Re-enable button for next session
+    startCameraBtn.disabled = false;
+    
     // Hide all UI elements
     if (captureBtn) {
-        captureBtn.style.display = 'none'; // Keep hidden for auto-capture mode
+        captureBtn.style.display = 'none';
     }
     
     saveControls.style.display = 'none';
     captureMessage.style.display = 'none';
     countdownDisplay.style.display = 'none';
+    timerDisplay.style.display = 'none';
     
     // Reset countdown state
     if (countdownTimer) {
@@ -267,14 +316,14 @@ function resetCamera() {
     }
     isCountingDown = false;
     
-    // Clear overlay canvas
-    overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-    
-    // Restart smile detection
-    if (modelsLoaded && !detectionInterval) {
-        console.log('Reset: Restarting smile detection');
-        startSmileDetection();
+    // Clear overlay canvas (no face detection boxes in grayscale mode)
+    if (overlayCtx) {
+        overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
     }
+    
+    // Reset camera state - camera stays on but inactive
+    cameraActive = false;
+    cameraTimeRemaining = 60;
 }
 
 async function detectSmile() {
@@ -722,6 +771,12 @@ function cleanup() {
         countdownTimer = null;
     }
     
+    // Stop camera timer
+    if (cameraTimer) {
+        clearInterval(cameraTimer);
+        cameraTimer = null;
+    }
+    
     // Stop camera stream
     if (stream) {
         stream.getTracks().forEach(track => {
@@ -756,15 +811,61 @@ document.addEventListener('visibilitychange', () => {
         }
     } else {
         console.log('App: Page visible, resuming detection');
-        if (modelsLoaded && !detectionInterval) {
+        // Only resume detection if camera session is active
+        if (modelsLoaded && cameraActive && !detectionInterval) {
             startSmileDetection();
         }
         startGalleryAutoRefresh();
     }
 });
 
+// Add camera timer functions
+function startCameraTimer() {
+    console.log('Timer: Starting 60-second camera timer');
+    cameraActive = true;
+    cameraTimeRemaining = 60;
+    timerDisplay.textContent = cameraTimeRemaining;
+    timerDisplay.style.display = 'block';
+    timerDisplay.className = 'timer-display';
+    
+    cameraTimer = setInterval(() => {
+        cameraTimeRemaining--;
+        timerDisplay.textContent = cameraTimeRemaining;
+        
+        // Add warning colors
+        if (cameraTimeRemaining <= 10) {
+            timerDisplay.className = 'timer-display critical';
+        } else if (cameraTimeRemaining <= 30) {
+            timerDisplay.className = 'timer-display warning';
+        }
+        
+        // Timer expired
+        if (cameraTimeRemaining <= 0) {
+            console.log('Timer: Camera timer expired');
+            stopCameraTimer();
+            resetCamera();
+        }
+    }, 1000);
+}
+
+function stopCameraTimer() {
+    if (cameraTimer) {
+        clearInterval(cameraTimer);
+        cameraTimer = null;
+    }
+    timerDisplay.style.display = 'none';
+    cameraActive = false;
+}
+
+// Handle start camera button click
+startCameraBtn.addEventListener('click', () => {
+    console.log('Button: Start session button clicked');
+    startCameraSession();
+});
+
 // Initialize everything when page loads
 console.log('App: Starting camera and gallery systems...');
-startCamera();
+// Start camera immediately in grayscale mode - no timer, no photo capture
+initializeCamera();
 startGalleryAutoRefresh();
 addGalleryRefreshButton();
