@@ -669,40 +669,96 @@ async function fetchGallery() {
 }
 
 function displayGallery(photos) {
-    const galleryGrid = document.getElementById('gallery-grid');
+    const galleryContainer = document.getElementById('gallery-container');
     
     if (photos.length === 0) {
-        galleryGrid.innerHTML = '<div class="gallery-empty">No photos yet! Take your first snap! 📸</div>';
+        galleryContainer.innerHTML = '<div class="gallery-empty">No winners yet! Be the first to win today! 🏆</div>';
         return;
     }
     
-    galleryGrid.innerHTML = photos.map(photo => {
-        // Use direct Supabase URLs for images
+    // Group photos by date
+    const photosByDate = {};
+    photos.forEach(photo => {
+        const date = new Date(photo.uploadedAt);
+        const dateKey = date.toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+        
+        if (!photosByDate[dateKey]) {
+            photosByDate[dateKey] = [];
+        }
+        photosByDate[dateKey].push(photo);
+    });
+    
+    // Sort dates (most recent first)
+    const sortedDates = Object.keys(photosByDate).sort((a, b) => {
+        return new Date(b) - new Date(a);
+    });
+    
+    // Generate HTML for each day
+    galleryContainer.innerHTML = sortedDates.map((dateKey, index) => {
+        const dayPhotos = photosByDate[dateKey];
+        const isToday = new Date(dateKey).toDateString() === new Date().toDateString();
+        const dateId = `day-${index}`;
+        
         return `
-            <div class="gallery-item" onclick="openPhoto('${photo.url}')">
-                <img src="${photo.url}" alt="${photo.filename}" loading="lazy">
-                <div class="photo-info">
-                    <div>${new Date(photo.uploadedAt).toLocaleDateString()}</div>
-                    <div>${new Date(photo.uploadedAt).toLocaleTimeString()}</div>
+            <div class="daily-section">
+                <div class="daily-header ${index > 0 ? 'collapsed' : ''}" onclick="toggleDaily('${dateId}')">
+                    <div class="daily-title">
+                        <span>🏆</span>
+                        <span>${isToday ? 'Today\'s Winners' : dateKey + ' Winners'}</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <span class="daily-count">${dayPhotos.length} winner${dayPhotos.length !== 1 ? 's' : ''}</span>
+                        <span class="daily-toggle">▼</span>
+                    </div>
+                </div>
+                <div id="${dateId}" class="daily-content ${index > 0 ? 'collapsed' : ''}">
+                    <div class="gallery-grid">
+                        ${dayPhotos.map(photo => `
+                            <div class="gallery-item" onclick="openPhoto('${photo.url}')">
+                                <img src="${photo.url}" alt="${photo.filename}" loading="lazy">
+                                <div class="photo-info">
+                                    <div>${new Date(photo.uploadedAt).toLocaleTimeString()}</div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
                 </div>
             </div>
         `;
     }).join('');
 }
 
+function toggleDaily(dateId) {
+    const content = document.getElementById(dateId);
+    const header = content.previousElementSibling;
+    
+    if (content.classList.contains('collapsed')) {
+        content.classList.remove('collapsed');
+        header.classList.remove('collapsed');
+    } else {
+        content.classList.add('collapsed');
+        header.classList.add('collapsed');
+    }
+}
+
 function updateGalleryInfo(count) {
     const photoCount = document.getElementById('photo-count');
     const lastUpdated = document.getElementById('last-updated');
     
-    photoCount.textContent = `${count} photo${count !== 1 ? 's' : ''}`;
+    photoCount.textContent = `${count} winner${count !== 1 ? 's' : ''}`;
     lastUpdated.textContent = `Updated: ${new Date().toLocaleTimeString()}`;
 }
 
 function showGalleryError() {
-    const galleryGrid = document.getElementById('gallery-grid');
-    galleryGrid.innerHTML = `
+    const galleryContainer = document.getElementById('gallery-container');
+    galleryContainer.innerHTML = `
         <div class="gallery-error">
-            <p>😕 Failed to load photos</p>
+            <p>😕 Failed to load winners</p>
             <p style="font-size: 0.9em; opacity: 0.8;">Check your connection and refresh</p>
         </div>
     `;

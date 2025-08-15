@@ -242,14 +242,80 @@ h1 {
     color: #333;
     margin-bottom: 1rem;
     text-align: center;
+    font-size: 2rem;
+}
+
+.gallery-container {
+    min-height: 200px;
+}
+
+.daily-section {
+    margin-bottom: 2rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: white;
+}
+
+.daily-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.daily-header:hover {
+    background: linear-gradient(135deg, #5a67d8 0%, #6b4299 100%);
+}
+
+.daily-header.collapsed {
+    background: linear-gradient(135deg, #a0a0a0 0%, #808080 100%);
+}
+
+.daily-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.daily-count {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+}
+
+.daily-toggle {
+    font-size: 1.5rem;
+    transition: transform 0.3s ease;
+}
+
+.daily-header.collapsed .daily-toggle {
+    transform: rotate(180deg);
+}
+
+.daily-content {
+    padding: 1rem;
+    max-height: 1000px;
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+}
+
+.daily-content.collapsed {
+    max-height: 0;
+    padding: 0 1rem;
 }
 
 .gallery-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 15px;
-    margin-bottom: 1rem;
-    min-height: 200px;
 }
 
 .gallery-item {
@@ -312,7 +378,6 @@ h1 {
     text-align: center;
     color: #666;
     font-style: italic;
-    grid-column: 1 / -1;
     padding: 2rem;
 }
 
@@ -320,10 +385,10 @@ h1 {
     text-align: center;
     color: #666;
     font-size: 1.2rem;
-    grid-column: 1 / -1;
     padding: 3rem;
     background: #f9f9f9;
     border-radius: 8px;
+    margin: 2rem 0;
 }
 
 .gallery-error {
