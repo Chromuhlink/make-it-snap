@@ -62,11 +62,13 @@ h1 {
     display: block;
     position: relative;
     filter: grayscale(100%);
+    transform: scaleX(-1);
     transition: filter 0.5s ease;
 }
 
 #video.active {
     filter: grayscale(0%);
+    transform: scaleX(-1);
 }
 
 #canvas {
@@ -75,6 +77,7 @@ h1 {
     height: 480px;
     border: 2px solid #ddd;
     border-radius: 8px;
+    transform: scaleX(-1);
 }
 
 #overlay-canvas {
@@ -86,6 +89,7 @@ h1 {
     pointer-events: none;
     border-radius: 8px;
     z-index: 2;
+    transform: scaleX(-1);
 }
 
 .capture-message {
