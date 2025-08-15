@@ -13,7 +13,7 @@
       "memory": 512
     },
     "api/face_detection.py": {
-      "runtime": "python3.9",
+      "runtime": "@vercel/python",
       "maxDuration": 30,
       "memory": 1024
     }

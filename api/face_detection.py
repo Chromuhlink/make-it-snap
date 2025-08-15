@@ -170,8 +170,11 @@ def estimate_happiness(face_image: np.ndarray, face_width: int, face_height: int
 
 def handler(request):
     """
-    Vercel serverless function handler
+    Vercel serverless function handler for Python
     """
+    from http.server import BaseHTTPRequestHandler
+    import urllib.parse
+    
     # Handle CORS preflight
     if request.method == "OPTIONS":
         return {
@@ -197,7 +200,15 @@ def handler(request):
     
     try:
         # Parse request body
-        body = json.loads(request.body)
+        if hasattr(request, 'get_json'):
+            body = request.get_json()
+        else:
+            # Fallback for different request formats
+            body_str = request.body if hasattr(request, 'body') else ''
+            if isinstance(body_str, bytes):
+                body_str = body_str.decode('utf-8')
+            body = json.loads(body_str) if body_str else {}
+        
         image_data = body.get('image')
         
         if not image_data:
