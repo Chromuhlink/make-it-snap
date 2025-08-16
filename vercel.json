@@ -11,10 +11,6 @@
     "api/debug.js": {
       "maxDuration": 10,
       "memory": 512
-    },
-    "api/face_detection.py": {
-      "maxDuration": 30,
-      "memory": 1024
     }
   },
   "env": {

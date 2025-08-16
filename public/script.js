@@ -11,7 +11,7 @@ const ctx = canvas.getContext('2d');
 const overlayCtx = overlayCanvas.getContext('2d');
 
 let stream = null;
-let faceDetectionReady = false;
+let modelsLoaded = false;
 let detectionInterval = null;
 let shutterAudio = null;
 let countdownTimer = null;
@@ -38,29 +38,59 @@ function createShutterSound() {
     oscillator.stop(audioContext.currentTime + 0.1);
 }
 
-async function initializeFaceDetection() {
+async function loadModels() {
     try {
-        console.log('FaceDetection: Testing Python backend connection...');
+        console.log('Models: Starting face-api.js model loading...');
         
-        // Test the face detection API with a simple ping
-        const testResponse = await fetch('/api/face_detection', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image: 'test' })
-        });
-        
-        if (testResponse.ok || testResponse.status === 400) {
-            // 400 is expected for test data, means API is working
-            faceDetectionReady = true;
-            console.log('FaceDetection: Python backend is ready!');
-        } else {
-            throw new Error(`API responded with status ${testResponse.status}`);
+        // Check if face-api is available
+        if (typeof faceapi === 'undefined') {
+            throw new Error('face-api.js library not loaded');
         }
         
+        console.log('Models: face-api.js library found');
+        
+        // Try multiple CDN sources for better reliability
+        const MODEL_URLS = [
+            'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights',
+            'https://justadudewhohacks.github.io/face-api.js/models',
+            '/models' // Fallback to local if you host them
+        ];
+        
+        let modelLoaded = false;
+        let lastError = null;
+        
+        for (const MODEL_URL of MODEL_URLS) {
+            try {
+                console.log(`Models: Trying to load from ${MODEL_URL}...`);
+                
+                console.log('Models: Loading tiny face detector...');
+                await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+                console.log('Models: Tiny face detector loaded');
+                
+                console.log('Models: Loading face expression net...');
+                await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
+                console.log('Models: Face expression net loaded');
+                
+                modelLoaded = true;
+                break; // Success, exit loop
+            } catch (error) {
+                console.error(`Models: Failed to load from ${MODEL_URL}:`, error);
+                lastError = error;
+                // Try next URL
+            }
+        }
+        
+        if (!modelLoaded) {
+            throw lastError || new Error('Failed to load models from all sources');
+        }
+        
+        modelsLoaded = true;
+        console.log('Models: All face-api.js models loaded successfully!');
+        
     } catch (error) {
-        console.error('FaceDetection: Error connecting to Python backend:', error);
-        alert('Face detection backend is not available. Please ensure the Python API is running.');
-        faceDetectionReady = false;
+        console.error('Models: Error loading face-api.js models:', error);
+        alert('Failed to load face detection models. Please check your internet connection and reload the page.');
+        modelsLoaded = false;
     }
 }
 
@@ -126,9 +156,9 @@ async function initializeCamera() {
             
             console.log('Camera: Canvas dimensions set');
             
-            // Initialize face detection after video is ready
-            console.log('Camera: Initializing face detection backend...');
-            await initializeFaceDetection();
+            // Load models after video is ready
+            console.log('Camera: Loading face detection models...');
+            await loadModels();
             
             // Camera is ready but inactive - no detection, no timer
             console.log('Camera: Ready in grayscale mode. Press Play to start session.');
@@ -188,12 +218,12 @@ function startCameraSession() {
     startCameraBtn.disabled = true;
     
     // Start smile detection only after pressing play
-    if (faceDetectionReady) {
+    if (modelsLoaded) {
         console.log('Session: Starting smile detection...');
         startSmileDetection();
     } else {
-        console.error('Session: Face detection backend not ready, cannot start smile detection');
-        alert('Face detection backend is not ready. Please refresh the page.');
+        console.error('Session: Models not loaded, cannot start smile detection');
+        alert('Face detection models are not ready. Please refresh the page.');
         return;
     }
     
@@ -297,8 +327,8 @@ function resetCamera() {
 }
 
 async function detectSmile() {
-    if (!faceDetectionReady || video.readyState !== 4 || document.hidden) {
-        console.log('Detection: Not ready - Backend ready:', faceDetectionReady, 'Video ready state:', video.readyState, 'Page visible:', !document.hidden);
+    if (!modelsLoaded || video.readyState !== 4 || document.hidden) {
+        console.log('Detection: Not ready - Models loaded:', modelsLoaded, 'Video ready state:', video.readyState, 'Page visible:', !document.hidden);
         return;
     }
     
@@ -310,45 +340,22 @@ async function detectSmile() {
     }
     
     try {
-        // Capture current frame from video
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = video.videoWidth;
-        tempCanvas.height = video.videoHeight;
-        const tempCtx = tempCanvas.getContext('2d');
-        tempCtx.drawImage(video, 0, 0);
-        
-        // Convert to base64
-        const imageData = tempCanvas.toDataURL('image/jpeg', 0.8);
-        
-        // Send to Python backend
-        const response = await fetch('/api/face_detection', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image: imageData })
-        });
-        
-        if (!response.ok) {
-            console.error('Detection: API error:', response.status);
-            return;
-        }
-        
-        const result = await response.json();
-        
-        if (!result.success) {
-            console.error('Detection: Backend error:', result.error);
-            return;
-        }
+        const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({
+            inputSize: 416,
+            scoreThreshold: 0.5
+        })).withFaceExpressions();
         
         // Clear the overlay canvas
         overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
         
-        if (result.faces && result.faces.length > 0) {
-            console.log('Face detected:', result.faces.length, 'faces');
-            const face = result.faces[0];
-            const happiness = face.expressions.happy;
+        if (detections.length > 0) {
+            console.log('Face detected:', detections.length, 'faces');
+            const detection = detections[0];
+            const expressions = detection.expressions;
+            const happiness = expressions.happy;
             
             // Draw detection box with color gradient
-            const box = face.box;
+            const box = detection.detection.box;
             
             // Determine color based on happiness level
             let boxColor;
@@ -861,7 +868,7 @@ document.addEventListener('visibilitychange', () => {
     } else {
         console.log('App: Page visible, resuming detection');
         // Only resume detection if camera session is active
-        if (faceDetectionReady && cameraActive && !detectionInterval) {
+        if (modelsLoaded && cameraActive && !detectionInterval) {
             startSmileDetection();
         }
         startGalleryAutoRefresh();
