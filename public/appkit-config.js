@@ -5,7 +5,7 @@ import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
 import { createCoinCall, CreateConstants, createMetadataBuilder, createZoraUploaderForCreator, setApiKey } from '@zoralabs/coins-sdk';
 import { base as baseChain } from 'viem/chains';
 import { formatEther, createPublicClient, http } from 'viem';
-import { getAccount, getChainId } from 'wagmi/actions';
+import { getAccount, getChainId, switchChain, sendTransaction } from 'wagmi/actions';
 import { mainnet as mainnetChain } from 'viem/chains';
 
 // 1. Get a project ID at https://dashboard.reown.com
@@ -312,38 +312,26 @@ try {
 
 async function ensureBaseChain() {
     try {
-        const current = await window.ethereum.request({ method: 'eth_chainId' });
-        const baseHex = '0x' + baseChain.id.toString(16);
-        if (current !== baseHex) {
-            await window.ethereum.request({
-                method: 'wallet_switchEthereumChain',
-                params: [{ chainId: baseHex }]
-            });
-        }
+        const currentId = (() => {
+            try { return getChainId(wagmiConfig); } catch { return null; }
+        })();
+        if (currentId === baseChain.id) return true;
+        await switchChain(wagmiConfig, { chainId: baseChain.id });
         return true;
     } catch (err) {
-        console.error('Chain switch to Base failed:', err);
-        // Try to add Base if it's not available, then switch again
+        console.error('Chain switch to Base via wagmi failed:', err);
+        // Fallback to injected provider if present
         try {
+            if (!window.ethereum) throw new Error('No injected provider');
             const baseHex = '0x' + baseChain.id.toString(16);
-            await window.ethereum.request({
-                method: 'wallet_addEthereumChain',
-                params: [{
-                    chainId: baseHex,
-                    chainName: 'Base',
-                    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-                    rpcUrls: ['https://mainnet.base.org'],
-                    blockExplorerUrls: ['https://basescan.org']
-                }]
-            });
             await window.ethereum.request({
                 method: 'wallet_switchEthereumChain',
                 params: [{ chainId: baseHex }]
             });
             return true;
-        } catch (addErr) {
-            console.error('Adding/switching to Base failed:', addErr);
-            alert('Please add and switch to Base network in your wallet to coin your snap.');
+        } catch (fallbackErr) {
+            console.error('Fallback chain switch failed:', fallbackErr);
+            alert('Please switch your connected wallet to Base network to coin your snap.');
             return false;
         }
     }
@@ -360,9 +348,6 @@ async function coinSnapWithZora(imageFile, title) {
     try {
         if (!window.walletState.isConnected || !window.walletState.address) {
             throw new Error('Connect your wallet first');
-        }
-        if (!window.ethereum) {
-            throw new Error('No wallet provider available');
         }
         const onBase = await ensureBaseChain();
         if (!onBase) return { ok: false, error: 'Wrong network' };
@@ -388,15 +373,32 @@ async function coinSnapWithZora(imageFile, title) {
 
         if (!calls || !calls.length) throw new Error('Failed to build coin transaction');
 
-        const txHash = await window.ethereum.request({
-            method: 'eth_sendTransaction',
-            params: [{
-                from: creator,
+        // Prefer sending via wagmi/AppKit connected wallet (works for WalletConnect/mobile & injected)
+        let txHash = null;
+        try {
+            const account = getAccount(wagmiConfig);
+            if (!account || !account.address) throw new Error('No connected account');
+            const valueWei = calls[0].value ? BigInt(calls[0].value) : 0n;
+            txHash = await sendTransaction(wagmiConfig, {
+                account: account.address,
                 to: calls[0].to,
                 data: calls[0].data,
-                value: calls[0].value ? '0x' + BigInt(calls[0].value).toString(16) : '0x0'
-            }]
-        });
+                value: valueWei,
+                chainId: baseChain.id
+            });
+        } catch (wagmiErr) {
+            console.warn('wagmi sendTransaction failed, trying injected provider if available:', wagmiErr);
+            if (!window.ethereum) throw wagmiErr;
+            txHash = await window.ethereum.request({
+                method: 'eth_sendTransaction',
+                params: [{
+                    from: creator,
+                    to: calls[0].to,
+                    data: calls[0].data,
+                    value: calls[0].value ? '0x' + BigInt(calls[0].value).toString(16) : '0x0'
+                }]
+            });
+        }
 
         return { ok: true, hash: txHash };
     } catch (e) {
