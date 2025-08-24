@@ -5,6 +5,7 @@ import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
 import { createCoinCall, CreateConstants, createMetadataBuilder, createZoraUploaderForCreator, setApiKey } from '@zoralabs/coins-sdk';
 import { base as baseChain } from 'viem/chains';
 import { formatEther, createPublicClient, http } from 'viem';
+import { getAccount, getChainId } from 'wagmi/actions';
 import { mainnet as mainnetChain } from 'viem/chains';
 
 // 1. Get a project ID at https://dashboard.reown.com
@@ -194,17 +195,30 @@ async function updateWalletBalanceUI() {
 // ------- Wallet connectivity helpers and events -------
 async function refreshWalletState() {
     try {
-        if (typeof window.ethereum === 'undefined') {
-            setDisconnected();
+        // Prefer wagmi state (works for WalletConnect/mobile providers without window.ethereum)
+        let account = null;
+        let chainId = null;
+        try {
+            account = getAccount(wagmiConfig);
+            chainId = getChainId(wagmiConfig);
+        } catch {}
+
+        if (account && account.address) {
+            const hexChain = typeof chainId === 'number' ? ('0x' + chainId.toString(16)) : chainId;
+            setConnected(account.address, hexChain);
             return;
         }
-        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-        const chainId = await window.ethereum.request({ method: 'eth_chainId' }).catch(() => null);
-        if (accounts && accounts.length > 0) {
-            setConnected(accounts[0], chainId);
-        } else {
-            setDisconnected();
+
+        // Fallback to injected provider if available
+        if (typeof window.ethereum !== 'undefined') {
+            const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+            const injectedChainId = await window.ethereum.request({ method: 'eth_chainId' }).catch(() => null);
+            if (accounts && accounts.length > 0) {
+                setConnected(accounts[0], injectedChainId);
+                return;
+            }
         }
+        setDisconnected();
     } catch (e) {
         console.error('refreshWalletState error:', e);
         setDisconnected();

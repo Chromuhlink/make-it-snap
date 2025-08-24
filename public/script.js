@@ -26,7 +26,10 @@ function updatePlayButtonState() {
     if (!startCameraBtn) return;
     const connected = !!(window.walletState && window.walletState.isConnected);
     const ready = !!modelsLoaded;
-    startCameraBtn.disabled = !(connected && ready);
+    // On mobile, disabling can get sticky; keep enabled when wallet connected OR models ready
+    // Only hard-disable when neither condition holds
+    const shouldDisable = !(connected && ready);
+    startCameraBtn.disabled = shouldDisable && !connected && !ready;
     if (!connected) {
         startCameraBtn.textContent = 'Connect Wallet to Play';
     } else if (!ready) {
