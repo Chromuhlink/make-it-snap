@@ -856,6 +856,8 @@ function cleanup() {
 window.addEventListener('beforeunload', cleanup);
 window.addEventListener('unload', cleanup);
 
+// Initialize AppKit is handled by the module import
+
 // Handle visibility changes (tab switching)
 document.addEventListener('visibilitychange', () => {
     if (document.hidden) {

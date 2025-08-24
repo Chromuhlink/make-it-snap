@@ -161,6 +161,19 @@ h1 {
     animation: pulse 0.5s infinite;
 }
 
+/* AppKit Button Styling */
+w3m-button {
+    width: 100%;
+    margin-bottom: 1rem;
+    --w3m-accent: #667eea;
+    --w3m-border-radius-master: 8px;
+}
+
+w3m-network-button {
+    width: 100%;
+    margin-bottom: 0.5rem;
+}
+
 .start-camera-btn {
     background-color: #28a745;
     color: white;
