@@ -24,8 +24,15 @@ let cameraActive = false;
 function updatePlayButtonState() {
     if (!startCameraBtn) return;
     const connected = !!(window.walletState && window.walletState.isConnected);
-    startCameraBtn.disabled = !connected;
-    startCameraBtn.textContent = connected ? 'Press Play' : 'Connect Wallet to Play';
+    const ready = !!modelsLoaded;
+    startCameraBtn.disabled = !(connected && ready);
+    if (!connected) {
+        startCameraBtn.textContent = 'Connect Wallet to Play';
+    } else if (!ready) {
+        startCameraBtn.textContent = 'Loading Face Models…';
+    } else {
+        startCameraBtn.textContent = 'Press Play';
+    }
 }
 
 function createShutterSound() {
@@ -67,10 +74,36 @@ async function loadModels() {
         let modelLoaded = false;
         let lastError = null;
         
+        for (const MODEL_URL of MODEL_URLS) {
+            try {
+                console.log(`Models: Trying to load from ${MODEL_URL}...`);
+                console.log('Models: Loading tiny face detector...');
+                await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+                console.log('Models: Tiny face detector loaded');
+                console.log('Models: Loading face expression net...');
+                await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
+                console.log('Models: Face expression net loaded');
+                modelLoaded = true;
+                break;
+            } catch (err) {
+                console.error(`Models: Failed to load from ${MODEL_URL}:`, err);
+                lastError = err;
+            }
+        }
+
+        if (!modelLoaded) {
+            throw lastError || new Error('Failed to load models from all sources');
+        }
+
+        modelsLoaded = true;
+        console.log('Models: All face-api.js models loaded successfully!');
+        try { window.dispatchEvent(new Event('models:loaded')); } catch {}
+        updatePlayButtonState();
     } catch (error) {
         console.error('Models: Error loading face-api.js models:', error);
         alert('Failed to load face detection models. Please check your internet connection and reload the page.');
         modelsLoaded = false;
+        updatePlayButtonState();
     }
 }
 
@@ -947,5 +980,6 @@ addGalleryRefreshButton();
 window.addEventListener('wallet:connected', updatePlayButtonState);
 window.addEventListener('wallet:updated', updatePlayButtonState);
 window.addEventListener('wallet:disconnected', updatePlayButtonState);
+window.addEventListener('models:loaded', updatePlayButtonState);
 // Initial state
 updatePlayButtonState();
