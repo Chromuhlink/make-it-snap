@@ -772,7 +772,11 @@ function displayGallery(photos) {
                 <div id="${dateId}" class="daily-content ${index > 0 ? 'collapsed' : ''}">
                     <div class="gallery-grid">
                         ${dayPhotos.map(photo => {
-                            const zoraUrl = photo.zoraUrl || (photo.zoraTxHash ? `https://basescan.org/tx/${photo.zoraTxHash}` : null);
+                            // Prefer a direct Zora coin URL when we have the deployed address
+                            const ref = (window.ZORA_CONFIG && window.ZORA_CONFIG.referrerAddress) ? `?referrer=${window.ZORA_CONFIG.referrerAddress}` : '';
+                            const chainSlug = (photo.chain && String(photo.chain).toLowerCase().includes('base')) ? 'base' : 'base';
+                            const coinUrl = photo.coinAddress ? `https://zora.co/coin/${chainSlug}:${photo.coinAddress}${ref}` : null;
+                            const zoraUrl = coinUrl || photo.zoraUrl || (photo.zoraTxHash ? `https://basescan.org/tx/${photo.zoraTxHash}` : null);
                             const content = `
                                 <img src="${photo.url}" alt="${photo.filename}" loading="lazy">
                                 <div class="photo-info">
