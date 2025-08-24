@@ -2,6 +2,8 @@
 import { createAppKit } from '@reown/appkit';
 import { mainnet, polygon, arbitrum, optimism, base } from '@reown/appkit/networks';
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
+import { createCoinCall, CreateConstants, createMetadataBuilder, createZoraUploaderForCreator } from '@zoralabs/coins-sdk';
+import { base as baseChain } from 'viem/chains';
 
 // 1. Get a project ID at https://dashboard.reown.com
 const projectId = '121dc2c7cd54970565e882ac7996a44f'; 
@@ -46,7 +48,8 @@ export const wagmiConfig = wagmiAdapter.wagmiConfig;
 window.walletState = {
     isConnected: false,
     address: null,
-    chainId: null
+    chainId: null,
+    provider: null
 };
 
 // 8. Update wallet UI when connection changes
@@ -113,3 +116,150 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.onclick = hardDisconnect;
     controls.appendChild(btn);
 });
+
+// ------- Wallet connectivity helpers and events -------
+async function refreshWalletState() {
+    try {
+        if (typeof window.ethereum === 'undefined') {
+            setDisconnected();
+            return;
+        }
+        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+        const chainId = await window.ethereum.request({ method: 'eth_chainId' }).catch(() => null);
+        if (accounts && accounts.length > 0) {
+            setConnected(accounts[0], chainId);
+        } else {
+            setDisconnected();
+        }
+    } catch (e) {
+        console.error('refreshWalletState error:', e);
+        setDisconnected();
+    }
+}
+
+function setConnected(address, chainId) {
+    const wasConnected = window.walletState.isConnected;
+    window.walletState.isConnected = true;
+    window.walletState.address = address;
+    window.walletState.chainId = chainId;
+    window.walletState.provider = window.ethereum || null;
+    if (!wasConnected) {
+        window.dispatchEvent(new CustomEvent('wallet:connected', { detail: { address, chainId } }));
+    } else {
+        window.dispatchEvent(new CustomEvent('wallet:updated', { detail: { address, chainId } }));
+    }
+}
+
+function setDisconnected() {
+    const wasConnected = window.walletState.isConnected;
+    window.walletState.isConnected = false;
+    window.walletState.address = null;
+    window.walletState.chainId = null;
+    window.walletState.provider = null;
+    if (wasConnected) {
+        window.dispatchEvent(new Event('wallet:disconnected'));
+    }
+}
+
+if (typeof window !== 'undefined') {
+    // Initial probe
+    refreshWalletState();
+    // Listen to provider events
+    if (window.ethereum && typeof window.ethereum.on === 'function') {
+        window.ethereum.on('accountsChanged', (accounts) => {
+            if (accounts && accounts.length > 0) {
+                setConnected(accounts[0], window.walletState.chainId);
+            } else {
+                setDisconnected();
+            }
+        });
+        window.ethereum.on('chainChanged', (chainId) => {
+            if (window.walletState.isConnected) {
+                setConnected(window.walletState.address, chainId);
+            }
+        });
+        window.ethereum.on('disconnect', () => setDisconnected());
+    }
+}
+
+// ------- Zora coin creation helper -------
+// Configure your developer referrer address here to earn rewards
+window.ZORA_CONFIG = window.ZORA_CONFIG || {
+    referrerAddress: null // e.g., '0xYourReferrerAddress'
+};
+
+async function ensureBaseChain() {
+    try {
+        const current = await window.ethereum.request({ method: 'eth_chainId' });
+        const baseHex = '0x' + baseChain.id.toString(16);
+        if (current !== baseHex) {
+            await window.ethereum.request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId: baseHex }]
+            });
+        }
+        return true;
+    } catch (err) {
+        console.error('Chain switch to Base failed:', err);
+        alert('Please switch your wallet network to Base to coin your snap.');
+        return false;
+    }
+}
+
+function generateSymbol() {
+    const base = 'SNAP';
+    const rand = Math.random().toString(36).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(2, 6);
+    const symbol = (base + rand).slice(0, 6);
+    return symbol;
+}
+
+async function coinSnapWithZora(imageFile, title) {
+    try {
+        if (!window.walletState.isConnected || !window.walletState.address) {
+            throw new Error('Connect your wallet first');
+        }
+        if (!window.ethereum) {
+            throw new Error('No wallet provider available');
+        }
+        const onBase = await ensureBaseChain();
+        if (!onBase) return { ok: false, error: 'Wrong network' };
+
+        const creator = window.walletState.address;
+        const symbol = generateSymbol();
+
+        const { createMetadataParameters } = await createMetadataBuilder()
+            .withName(title)
+            .withSymbol(symbol)
+            .withDescription('Make It Snap photo')
+            .withImage(imageFile)
+            .upload(createZoraUploaderForCreator(creator));
+
+        const calls = await createCoinCall({
+            creator,
+            ...createMetadataParameters,
+            currency: CreateConstants.ContentCoinCurrencies.ZORA,
+            chainId: baseChain.id,
+            startingMarketCap: CreateConstants.StartingMarketCaps.LOW,
+            platformReferrer: window.ZORA_CONFIG?.referrerAddress || undefined
+        });
+
+        if (!calls || !calls.length) throw new Error('Failed to build coin transaction');
+
+        const txHash = await window.ethereum.request({
+            method: 'eth_sendTransaction',
+            params: [{
+                from: creator,
+                to: calls[0].to,
+                data: calls[0].data,
+                value: calls[0].value ? '0x' + BigInt(calls[0].value).toString(16) : '0x0'
+            }]
+        });
+
+        return { ok: true, hash: txHash };
+    } catch (e) {
+        console.error('coinSnapWithZora error:', e);
+        return { ok: false, error: e?.message || String(e) };
+    }
+}
+
+window.coinSnapWithZora = coinSnapWithZora;

@@ -15,6 +15,6 @@ export default defineConfig({
     }
   },
   optimizeDeps: {
-    include: ['@reown/appkit', '@reown/appkit-adapter-wagmi', 'wagmi', 'viem']
+    include: ['@reown/appkit', '@reown/appkit-adapter-wagmi', 'wagmi', 'viem', '@zoralabs/coins-sdk']
   }
 });

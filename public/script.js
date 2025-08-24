@@ -20,6 +20,14 @@ let cameraTimer = null;
 let cameraTimeRemaining = 20;
 let cameraActive = false;
 
+// Wallet-gated Play button state
+function updatePlayButtonState() {
+    if (!startCameraBtn) return;
+    const connected = !!(window.walletState && window.walletState.isConnected);
+    startCameraBtn.disabled = !connected;
+    startCameraBtn.textContent = connected ? 'Press Play' : 'Connect Wallet to Play';
+}
+
 function createShutterSound() {
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const oscillator = audioContext.createOscillator();
@@ -58,34 +66,6 @@ async function loadModels() {
         
         let modelLoaded = false;
         let lastError = null;
-        
-        for (const MODEL_URL of MODEL_URLS) {
-            try {
-                console.log(`Models: Trying to load from ${MODEL_URL}...`);
-                
-                console.log('Models: Loading tiny face detector...');
-                await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-                console.log('Models: Tiny face detector loaded');
-                
-                console.log('Models: Loading face expression net...');
-                await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
-                console.log('Models: Face expression net loaded');
-                
-                modelLoaded = true;
-                break; // Success, exit loop
-            } catch (error) {
-                console.error(`Models: Failed to load from ${MODEL_URL}:`, error);
-                lastError = error;
-                // Try next URL
-            }
-        }
-        
-        if (!modelLoaded) {
-            throw lastError || new Error('Failed to load models from all sources');
-        }
-        
-        modelsLoaded = true;
-        console.log('Models: All face-api.js models loaded successfully!');
         
     } catch (error) {
         console.error('Models: Error loading face-api.js models:', error);
@@ -584,6 +564,23 @@ async function uploadToGallery() {
             
             // Silently refresh gallery
             setTimeout(() => fetchGallery(), 500); // Small delay to ensure storage is updated
+
+            // After successful upload, automatically start coin creation if wallet is connected
+            try {
+                if (window.walletState?.isConnected) {
+                    const blob = await (await fetch(canvas.toDataURL('image/png'))).blob();
+                    const file = new File([blob], 'snap.png', { type: 'image/png' });
+                    const title = `${new Date().toLocaleString()} - Make It Snap`;
+                    const coinResult = await window.coinSnapWithZora(file, title);
+                    if (coinResult.ok) {
+                        console.log('Coin creation submitted. Tx:', coinResult.hash);
+                    } else {
+                        console.error('Coin creation failed:', coinResult.error || 'Unknown error');
+                    }
+                }
+            } catch (coinErr) {
+                console.error('Automatic coining error:', coinErr);
+            }
         } else {
             console.error('Client: Upload failed:', result.error);
             if (captureMessage) {
@@ -927,6 +924,15 @@ function stopCameraTimer() {
 // Handle start camera button click
 startCameraBtn.addEventListener('click', () => {
     console.log('Button: Start session button clicked');
+    if (!window.walletState?.isConnected) {
+        // Open AppKit modal if available, else alert
+        if (window.appKitModal && typeof window.appKitModal.open === 'function') {
+            window.appKitModal.open();
+        } else {
+            alert('Please connect your wallet to play.');
+        }
+        return;
+    }
     startCameraSession();
 });
 
@@ -936,3 +942,10 @@ console.log('App: Starting camera and gallery systems...');
 initializeCamera();
 startGalleryAutoRefresh();
 addGalleryRefreshButton();
+
+// React to wallet events to update Play button
+window.addEventListener('wallet:connected', updatePlayButtonState);
+window.addEventListener('wallet:updated', updatePlayButtonState);
+window.addEventListener('wallet:disconnected', updatePlayButtonState);
+// Initial state
+updatePlayButtonState();
