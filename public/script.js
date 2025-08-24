@@ -17,7 +17,7 @@ let shutterAudio = null;
 let countdownTimer = null;
 let isCountingDown = false;
 let cameraTimer = null;
-let cameraTimeRemaining = 60;
+let cameraTimeRemaining = 20;
 let cameraActive = false;
 
 function createShutterSound() {
@@ -227,7 +227,7 @@ function startCameraSession() {
         return;
     }
     
-    // Start the 60-second timer
+    // Start the 20-second timer
     startCameraTimer();
     
     cameraActive = true;
@@ -323,7 +323,7 @@ function resetCamera() {
     
     // Reset camera state - camera stays on but inactive
     cameraActive = false;
-    cameraTimeRemaining = 60;
+    cameraTimeRemaining = 20;
 }
 
 async function detectSmile() {
@@ -884,9 +884,9 @@ document.addEventListener('visibilitychange', () => {
 
 // Add camera timer functions
 function startCameraTimer() {
-    console.log('Timer: Starting 60-second camera timer');
+    console.log('Timer: Starting 20-second camera timer');
     cameraActive = true;
-    cameraTimeRemaining = 60;
+    cameraTimeRemaining = 20;
     timerDisplay.textContent = cameraTimeRemaining;
     timerDisplay.style.display = 'block';
     timerDisplay.className = 'timer-display';
