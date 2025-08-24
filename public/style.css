@@ -52,11 +52,13 @@ h1 {
     position: relative;
     display: inline-block;
     margin-bottom: 1rem;
+    width: 100%;
+    max-width: 640px;
 }
 
 #video {
-    width: 640px;
-    height: 480px;
+    width: 100%;
+    height: auto;
     border: 2px solid #ddd;
     border-radius: 8px;
     display: block;
@@ -73,8 +75,8 @@ h1 {
 
 #canvas {
     display: none;
-    width: 640px;
-    height: 480px;
+    width: 100%;
+    height: auto;
     border: 2px solid #ddd;
     border-radius: 8px;
     transform: scaleX(-1);
@@ -458,4 +460,47 @@ h1 {
 @keyframes spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
+}
+
+/* --- Simple responsive layout tweaks (mobile + desktop) --- */
+img, video, canvas {
+    max-width: 100%;
+    height: auto;
+}
+
+.camera-section {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.main-content {
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.controls-section {
+    flex: 0 0 auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding-top: 0;
+    margin-right: 0;
+}
+
+w3m-button {
+    display: inline-block;
+}
+
+.start-camera-btn {
+    width: auto;
+}
+
+@media (max-width: 480px) {
+    .container { padding: 1rem; }
+    h1 { font-size: 1.5rem; }
+    .gallery-section h2 { font-size: 1.25rem; }
 }

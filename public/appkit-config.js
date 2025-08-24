@@ -151,18 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.style.backgroundColor = '#dc3545';
     btn.onclick = hardDisconnect;
     controls.appendChild(btn);
-
-    // Create (or find) wallet balance indicator
-    let balanceEl = document.getElementById('wallet-balance');
-    if (!balanceEl) {
-        balanceEl = document.createElement('div');
-        balanceEl.id = 'wallet-balance';
-        balanceEl.style.marginLeft = '12px';
-        balanceEl.style.fontSize = '0.9rem';
-        balanceEl.style.opacity = '0.9';
-        controls.appendChild(balanceEl);
-    }
-    updateWalletBalanceUI();
 });
 
 async function updateWalletBalanceUI() {
@@ -234,7 +222,7 @@ function setConnected(address, chainId) {
     } else {
         window.dispatchEvent(new CustomEvent('wallet:updated', { detail: { address, chainId } }));
     }
-    updateWalletBalanceUI();
+    // No-op: balance UI removed
 }
 
 function setDisconnected() {
@@ -246,7 +234,7 @@ function setDisconnected() {
     if (wasConnected) {
         window.dispatchEvent(new Event('wallet:disconnected'));
     }
-    updateWalletBalanceUI();
+    // No-op: balance UI removed
 }
 
 if (typeof window !== 'undefined') {

@@ -19,6 +19,7 @@ let isCountingDown = false;
 let cameraTimer = null;
 let cameraTimeRemaining = 20;
 let cameraActive = false;
+let pendingStartAfterConnect = false;
 
 // Wallet-gated Play button state
 function updatePlayButtonState() {
@@ -1015,6 +1016,8 @@ startCameraBtn.addEventListener('click', () => {
     if (!window.walletState?.isConnected) {
         // Open AppKit modal if available, else alert
         if (window.appKitModal && typeof window.appKitModal.open === 'function') {
+            // Remember user's intent to start after connecting (helps on mobile)
+            pendingStartAfterConnect = true;
             window.appKitModal.open();
         } else {
             alert('Please connect your wallet to play.');
@@ -1038,3 +1041,29 @@ window.addEventListener('wallet:disconnected', updatePlayButtonState);
 window.addEventListener('models:loaded', updatePlayButtonState);
 // Initial state
 updatePlayButtonState();
+
+// Auto-start session on mobile after wallet connects if user already tried to start
+window.addEventListener('wallet:connected', () => {
+    if (pendingStartAfterConnect) {
+        if (modelsLoaded) {
+            console.log('Auto-start: Wallet connected and models ready, starting session');
+            pendingStartAfterConnect = false;
+            startCameraSession();
+        } else {
+            console.log('Auto-start: Wallet connected, waiting for models to load');
+            const once = () => {
+                window.removeEventListener('models:loaded', once);
+                if (pendingStartAfterConnect) {
+                    console.log('Auto-start: Models loaded, starting session');
+                    pendingStartAfterConnect = false;
+                    startCameraSession();
+                }
+            };
+            window.addEventListener('models:loaded', once);
+        }
+    }
+});
+
+window.addEventListener('wallet:disconnected', () => {
+    pendingStartAfterConnect = false;
+});
