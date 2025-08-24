@@ -4,6 +4,7 @@ import { mainnet, polygon, arbitrum, optimism, base } from '@reown/appkit/networ
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
 import { createCoinCall, CreateConstants, createMetadataBuilder, createZoraUploaderForCreator, setApiKey } from '@zoralabs/coins-sdk';
 import { base as baseChain } from 'viem/chains';
+import { formatEther } from 'viem';
 
 // 1. Get a project ID at https://dashboard.reown.com
 const projectId = '121dc2c7cd54970565e882ac7996a44f'; 
@@ -86,6 +87,9 @@ window.walletState = {
 // 8. Update wallet UI when connection changes
 modal.subscribeEvents(event => {
     console.log('Wallet event:', event);
+    // Sync walletState based on current provider accounts after any modal event
+    // This ensures our app-level gating updates immediately after user connects/disconnects in AppKit
+    refreshWalletState();
     updateWalletUI();
 });
 
@@ -146,7 +150,40 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.style.backgroundColor = '#dc3545';
     btn.onclick = hardDisconnect;
     controls.appendChild(btn);
+
+    // Create (or find) wallet balance indicator
+    let balanceEl = document.getElementById('wallet-balance');
+    if (!balanceEl) {
+        balanceEl = document.createElement('div');
+        balanceEl.id = 'wallet-balance';
+        balanceEl.style.marginLeft = '12px';
+        balanceEl.style.fontSize = '0.9rem';
+        balanceEl.style.opacity = '0.9';
+        controls.appendChild(balanceEl);
+    }
+    updateWalletBalanceUI();
 });
+
+async function updateWalletBalanceUI() {
+    try {
+        const el = document.getElementById('wallet-balance');
+        if (!el) return;
+        if (!window.walletState?.isConnected || !window.walletState?.address || !window.ethereum) {
+            el.textContent = '';
+            return;
+        }
+        const balanceHex = await window.ethereum.request({
+            method: 'eth_getBalance',
+            params: [window.walletState.address, 'latest']
+        });
+        const wei = BigInt(balanceHex);
+        const eth = formatEther(wei);
+        const formatted = Number.parseFloat(eth).toFixed(4);
+        el.textContent = `Balance: ${formatted} ETH`;
+    } catch (e) {
+        console.warn('Balance fetch failed:', e);
+    }
+}
 
 // ------- Wallet connectivity helpers and events -------
 async function refreshWalletState() {
@@ -179,6 +216,7 @@ function setConnected(address, chainId) {
     } else {
         window.dispatchEvent(new CustomEvent('wallet:updated', { detail: { address, chainId } }));
     }
+    updateWalletBalanceUI();
 }
 
 function setDisconnected() {
@@ -190,6 +228,7 @@ function setDisconnected() {
     if (wasConnected) {
         window.dispatchEvent(new Event('wallet:disconnected'));
     }
+    updateWalletBalanceUI();
 }
 
 if (typeof window !== 'undefined') {
@@ -202,11 +241,13 @@ if (typeof window !== 'undefined') {
             } else {
                 setDisconnected();
             }
+            updateWalletBalanceUI();
         });
         window.ethereum.on('chainChanged', (chainId) => {
             if (window.walletState.isConnected) {
                 setConnected(window.walletState.address, chainId);
             }
+            updateWalletBalanceUI();
         });
         window.ethereum.on('disconnect', () => setDisconnected());
     }
