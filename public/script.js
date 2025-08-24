@@ -808,6 +808,10 @@ function addGalleryRefreshButton() {
     }
 }
 
+// Expose gallery helpers for inline handlers in generated HTML
+window.toggleDaily = toggleDaily;
+window.openPhoto = openPhoto;
+
 document.addEventListener('keydown', handleKeyPress);
 
 // Cleanup function to prevent memory leaks
