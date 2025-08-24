@@ -616,7 +616,31 @@ async function uploadToGallery() {
                     if (coinResult.ok) {
                         console.log('Coin creation submitted. Tx:', coinResult.hash);
                         if (captureMessage) {
-                            captureMessage.textContent = 'Coin submitted. Check your wallet.';
+                            captureMessage.textContent = 'Coin submitted. Waiting for confirmation...';
+                        }
+                        // Cancel auto-exit while we wait
+                        // (We rely on reset after confirmation instead)
+                        // No explicit timer var here; resetCamera() is called elsewhere after 6s, 
+                        // but we keep UI busy by updating text until confirmation.
+                        try {
+                            const waitRes = await window.waitForZoraLaunch(coinResult.hash);
+                            if (waitRes.ok) {
+                                console.log('Coin launch confirmed. Receipt:', waitRes.receipt);
+                                if (captureMessage) {
+                                    captureMessage.textContent = 'Launch confirmed!';
+                                }
+                                setTimeout(() => resetCamera(), 1500);
+                            } else {
+                                console.error('Confirmation failed:', waitRes.error || 'Unknown');
+                                if (captureMessage) {
+                                    captureMessage.textContent = 'Confirmation failed. Try again.';
+                                }
+                            }
+                        } catch (waitErr) {
+                            console.error('Error waiting for confirmation:', waitErr);
+                            if (captureMessage) {
+                                captureMessage.textContent = 'Error during confirmation.';
+                            }
                         }
                     } else {
                         console.error('Coin creation failed:', coinResult.error || 'Unknown error');
@@ -716,7 +740,19 @@ function ensureManualCoinButton() {
                 const title = `${new Date().toLocaleString()} - Make It Snap`;
                 const coinResult = await window.coinSnapWithZora(file, title);
                 if (coinResult.ok) {
-                    if (captureMessage) captureMessage.textContent = 'Coin submitted. Check wallet.';
+                    if (captureMessage) captureMessage.textContent = 'Coin submitted. Waiting for confirmation...';
+                    try {
+                        const waitRes = await window.waitForZoraLaunch(coinResult.hash);
+                        if (waitRes.ok) {
+                            if (captureMessage) captureMessage.textContent = 'Launch confirmed!';
+                            setTimeout(() => resetCamera(), 1500);
+                        } else {
+                            if (captureMessage) captureMessage.textContent = 'Confirmation failed. Try again.';
+                        }
+                    } catch (e2) {
+                        console.error('Manual wait error:', e2);
+                        if (captureMessage) captureMessage.textContent = 'Error during confirmation.';
+                    }
                 } else {
                     if (captureMessage) captureMessage.textContent = 'Coin failed: ' + (coinResult.error || 'Unknown');
                 }

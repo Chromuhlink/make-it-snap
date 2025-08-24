@@ -408,3 +408,18 @@ async function coinSnapWithZora(imageFile, title) {
 }
 
 window.coinSnapWithZora = coinSnapWithZora;
+
+// Wait for Zora coin launch confirmation (tx receipt on Base)
+async function waitForZoraLaunch(hash) {
+    try {
+        const client = createPublicClient({ chain: baseChain, transport: http() });
+        const receipt = await client.waitForTransactionReceipt({ hash });
+        const ok = receipt?.status === 'success' || receipt?.status === '0x1' || receipt?.status === 1;
+        return { ok, receipt };
+    } catch (e) {
+        console.error('waitForZoraLaunch error:', e);
+        return { ok: false, error: e?.message || String(e) };
+    }
+}
+
+window.waitForZoraLaunch = waitForZoraLaunch;
