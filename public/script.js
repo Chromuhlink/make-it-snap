@@ -378,11 +378,12 @@ async function detectSmile() {
                 box.height
             );
             
-            // Draw happiness text with matching color
-            overlayCtx.fillStyle = boxColor;
+            // Draw status text: Loading... until threshold, then Target reached in green
+            const reachedTarget = happiness > 0.95;
+            overlayCtx.fillStyle = reachedTarget ? '#00ff00' : '#ffffff';
             overlayCtx.font = 'bold 16px Arial';
             overlayCtx.fillText(
-                `Happiness: ${Math.round(happiness * 100)}%`,
+                reachedTarget ? 'Target reached' : 'Loading...',
                 box.x,
                 box.y - 10
             );
