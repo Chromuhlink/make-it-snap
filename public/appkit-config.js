@@ -4,7 +4,8 @@ import { mainnet, polygon, arbitrum, optimism, base } from '@reown/appkit/networ
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
 import { createCoinCall, CreateConstants, createMetadataBuilder, createZoraUploaderForCreator, setApiKey } from '@zoralabs/coins-sdk';
 import { base as baseChain } from 'viem/chains';
-import { formatEther } from 'viem';
+import { formatEther, createPublicClient, http } from 'viem';
+import { mainnet as mainnetChain } from 'viem/chains';
 
 // 1. Get a project ID at https://dashboard.reown.com
 const projectId = '121dc2c7cd54970565e882ac7996a44f'; 
@@ -172,11 +173,28 @@ async function updateWalletBalanceUI() {
             el.textContent = '';
             return;
         }
-        const balanceHex = await window.ethereum.request({
-            method: 'eth_getBalance',
-            params: [window.walletState.address, 'latest']
-        });
-        const wei = BigInt(balanceHex);
+        let balanceHex = null;
+        try {
+            balanceHex = await window.ethereum.request({
+                method: 'eth_getBalance',
+                params: [window.walletState.address, 'latest']
+            });
+        } catch {}
+
+        if (balanceHex) {
+            const wei = BigInt(balanceHex);
+            const eth = formatEther(wei);
+            const formatted = Number.parseFloat(eth).toFixed(4);
+            el.textContent = `Balance: ${formatted} ETH`;
+            return;
+        }
+
+        // Fallback via public RPC (viem)
+        const chainIdHex = window.walletState.chainId;
+        const chainId = typeof chainIdHex === 'string' && chainIdHex.startsWith('0x') ? parseInt(chainIdHex, 16) : Number(chainIdHex);
+        const chain = chainId === baseChain.id ? baseChain : mainnetChain;
+        const client = createPublicClient({ chain, transport: http() });
+        const wei = await client.getBalance({ address: window.walletState.address });
         const eth = formatEther(wei);
         const formatted = Number.parseFloat(eth).toFixed(4);
         el.textContent = `Balance: ${formatted} ETH`;
