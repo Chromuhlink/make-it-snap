@@ -2,7 +2,7 @@
 import { createAppKit } from '@reown/appkit';
 import { mainnet, polygon, arbitrum, optimism, base } from '@reown/appkit/networks';
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
-import { createCoinCall, CreateConstants, createMetadataBuilder, createZoraUploaderForCreator, setApiKey } from '@zoralabs/coins-sdk';
+import { createCoinCall, CreateConstants, createMetadataBuilder, createZoraUploaderForCreator, setApiKey, getCoinCreateFromLogs } from '@zoralabs/coins-sdk';
 import { base as baseChain } from 'viem/chains';
 import { formatEther, createPublicClient, http } from 'viem';
 import { getAccount, getChainId, switchChain, sendTransaction } from 'wagmi/actions';
@@ -415,7 +415,12 @@ async function waitForZoraLaunch(hash) {
         const client = createPublicClient({ chain: baseChain, transport: http() });
         const receipt = await client.waitForTransactionReceipt({ hash });
         const ok = receipt?.status === 'success' || receipt?.status === '0x1' || receipt?.status === 1;
-        return { ok, receipt };
+        let coinAddress = null;
+        try {
+            const deployment = getCoinCreateFromLogs(receipt);
+            coinAddress = deployment?.coin || null;
+        } catch {}
+        return { ok, receipt, coinAddress };
     } catch (e) {
         console.error('waitForZoraLaunch error:', e);
         return { ok: false, error: e?.message || String(e) };

@@ -42,6 +42,7 @@ module.exports = async function handler(req, res) {
 
       // Try to load corresponding metadata sidecar
       let zoraTxHash = null;
+      let coinAddress = null;
       let chain = 'base';
       let zoraUrl = null;
       try {
@@ -54,11 +55,12 @@ module.exports = async function handler(req, res) {
           if (resp.ok) {
             const meta = await resp.json();
             zoraTxHash = meta?.zoraTxHash || null;
+            coinAddress = meta?.coinAddress || null;
             chain = meta?.chain || 'base';
-            // Prefer a Zora collect URL if we have enough info; fallback to explorer
-            if (zoraTxHash) {
-              zoraUrl = `https://basescan.org/tx/${zoraTxHash}`;
-            }
+            // Prefer Zora coin URL when address exists; fallback to explorer
+            if (meta?.zoraUrl) zoraUrl = meta.zoraUrl;
+            else if (coinAddress) zoraUrl = `https://zora.co/coin/${coinAddress}`;
+            else if (zoraTxHash) zoraUrl = `https://basescan.org/tx/${zoraTxHash}`;
           }
         }
       } catch (e) {
@@ -71,6 +73,7 @@ module.exports = async function handler(req, res) {
         uploadedAt: file.created_at,
         size: file.metadata?.size || 0,
         zoraTxHash,
+        coinAddress,
         chain,
         zoraUrl
       };

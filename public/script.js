@@ -568,8 +568,8 @@ async function processCoinThenUpload() {
                     if (captureMessage) {
                         captureMessage.textContent = 'Launch confirmed! Saving...';
                     }
-                    // Pass along the onchain info so the gallery can link to Zora/Basescan
-                    await uploadToGallery({ zoraTxHash: coinResult.hash, chain: 'base' });
+                    // Pass along the onchain info so the gallery can link to Zora
+                    await uploadToGallery({ zoraTxHash: coinResult.hash, coinAddress: waitRes.coinAddress || null, chain: 'base' });
                     setTimeout(() => resetCamera(), 1500);
                 } else {
                     console.error('Confirmation failed:', waitRes.error || 'Unknown');

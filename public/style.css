@@ -503,4 +503,6 @@ w3m-button {
     .container { padding: 1rem; }
     h1 { font-size: 1.5rem; }
     .gallery-section h2 { font-size: 1.25rem; }
+    body { align-items: flex-start; }
+    .daily-content { max-height: none; overflow: visible; -webkit-overflow-scrolling: touch; }
 }

@@ -30,7 +30,7 @@ module.exports = async function handler(req, res) {
       body = raw ? JSON.parse(raw) : {};
     }
 
-    const { image, filename, zoraTxHash, chain } = body || {};
+    const { image, filename, zoraTxHash, coinAddress, chain } = body || {};
 
     if (!image) {
       console.error('Upload API: No image data provided');
@@ -121,9 +121,11 @@ module.exports = async function handler(req, res) {
     try {
       const meta = {
         zoraTxHash: zoraTxHash || null,
+        coinAddress: coinAddress || null,
         chain: chain || 'base',
         // Precompute a basic explorer URL as a fallback link
-        explorerUrl: zoraTxHash ? `https://basescan.org/tx/${zoraTxHash}` : null
+        explorerUrl: zoraTxHash ? `https://basescan.org/tx/${zoraTxHash}` : null,
+        zoraUrl: coinAddress ? `https://zora.co/coin/${coinAddress}` : null
       };
       const metaJson = JSON.stringify(meta, null, 2);
       const metaName = `${fileName}.json`;
@@ -145,6 +147,7 @@ module.exports = async function handler(req, res) {
       path: data.path,
       storage: 'supabase',
       zoraTxHash: zoraTxHash || null,
+      coinAddress: coinAddress || null,
       chain: chain || 'base'
     });
   } catch (error) {
