@@ -568,7 +568,8 @@ async function processCoinThenUpload() {
                     if (captureMessage) {
                         captureMessage.textContent = 'Launch confirmed! Saving...';
                     }
-                    await uploadToGallery();
+                    // Pass along the onchain info so the gallery can link to Zora/Basescan
+                    await uploadToGallery({ zoraTxHash: coinResult.hash, chain: 'base' });
                     setTimeout(() => resetCamera(), 1500);
                 } else {
                     console.error('Confirmation failed:', waitRes.error || 'Unknown');
@@ -597,7 +598,7 @@ async function processCoinThenUpload() {
     }
 }
 
-async function uploadToGallery() {
+async function uploadToGallery(meta) {
     try {
         console.log('Client: Starting photo upload...');
         
@@ -621,7 +622,7 @@ async function uploadToGallery() {
             fetch('/api/upload', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image: imageData })
+                body: JSON.stringify({ image: imageData, zoraTxHash: meta?.zoraTxHash || null, chain: meta?.chain || 'base' })
             }),
             timeoutPromise
         ]);
@@ -770,14 +771,26 @@ function displayGallery(photos) {
                 </div>
                 <div id="${dateId}" class="daily-content ${index > 0 ? 'collapsed' : ''}">
                     <div class="gallery-grid">
-                        ${dayPhotos.map(photo => `
-                            <div class="gallery-item" onclick="openPhoto('${photo.url}')">
+                        ${dayPhotos.map(photo => {
+                            const zoraUrl = photo.zoraUrl || (photo.zoraTxHash ? `https://basescan.org/tx/${photo.zoraTxHash}` : null);
+                            const content = `
                                 <img src="${photo.url}" alt="${photo.filename}" loading="lazy">
                                 <div class="photo-info">
                                     <div>${new Date(photo.uploadedAt).toLocaleTimeString()}</div>
+                                </div>`;
+                            if (zoraUrl) {
+                                return `
+                                    <a class="gallery-item" href="${zoraUrl}" target="_blank" rel="noopener noreferrer">
+                                        ${content}
+                                    </a>
+                                `;
+                            }
+                            return `
+                                <div class="gallery-item" onclick="openPhoto('${photo.url}')">
+                                    ${content}
                                 </div>
-                            </div>
-                        `).join('')}
+                            `;
+                        }).join('')}
                     </div>
                 </div>
             </div>

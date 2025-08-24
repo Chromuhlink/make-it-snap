@@ -35,18 +35,46 @@ module.exports = async function handler(req, res) {
       throw error;
     }
 
-    const photos = (files || []).map((file) => {
+    const photos = await Promise.all((files || []).filter(f => !f.name.endsWith('.json')).map(async (file) => {
       const { data: publicData } = supabase.storage
         .from(bucketName)
         .getPublicUrl(file.name);
+
+      // Try to load corresponding metadata sidecar
+      let zoraTxHash = null;
+      let chain = 'base';
+      let zoraUrl = null;
+      try {
+        const metaPath = `${file.name}.json`;
+        const { data: metaSignedUrl } = await supabase.storage
+          .from(bucketName)
+          .createSignedUrl(metaPath, 60);
+        if (metaSignedUrl?.signedUrl) {
+          const resp = await fetch(metaSignedUrl.signedUrl);
+          if (resp.ok) {
+            const meta = await resp.json();
+            zoraTxHash = meta?.zoraTxHash || null;
+            chain = meta?.chain || 'base';
+            // Prefer a Zora collect URL if we have enough info; fallback to explorer
+            if (zoraTxHash) {
+              zoraUrl = `https://basescan.org/tx/${zoraTxHash}`;
+            }
+          }
+        }
+      } catch (e) {
+        // Non-blocking; proceed without link
+      }
 
       return {
         url: publicData?.publicUrl,
         filename: file.name,
         uploadedAt: file.created_at,
         size: file.metadata?.size || 0,
+        zoraTxHash,
+        chain,
+        zoraUrl
       };
-    });
+    }));
 
     console.log('Gallery API: Found', photos.length, 'photos in Supabase');
     res.status(200).json({

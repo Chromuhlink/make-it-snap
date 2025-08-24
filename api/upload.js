@@ -30,7 +30,7 @@ module.exports = async function handler(req, res) {
       body = raw ? JSON.parse(raw) : {};
     }
 
-    const { image, filename } = body || {};
+    const { image, filename, zoraTxHash, chain } = body || {};
 
     if (!image) {
       console.error('Upload API: No image data provided');
@@ -117,6 +117,26 @@ module.exports = async function handler(req, res) {
 
     const publicUrl = publicData?.publicUrl;
 
+    // Optionally upload sidecar metadata for Zora linking
+    try {
+      const meta = {
+        zoraTxHash: zoraTxHash || null,
+        chain: chain || 'base',
+        // Precompute a basic explorer URL as a fallback link
+        explorerUrl: zoraTxHash ? `https://basescan.org/tx/${zoraTxHash}` : null
+      };
+      const metaJson = JSON.stringify(meta, null, 2);
+      const metaName = `${fileName}.json`;
+      await supabase.storage
+        .from(bucketName)
+        .upload(metaName, Buffer.from(metaJson), {
+          contentType: 'application/json',
+          upsert: true
+        });
+    } catch (metaErr) {
+      console.warn('Upload API: Failed to upload metadata (non-blocking):', metaErr?.message || metaErr);
+    }
+
     console.log('Upload API: Success! Stored in Supabase');
     res.status(200).json({
       success: true,
@@ -124,6 +144,8 @@ module.exports = async function handler(req, res) {
       filename: fileName,
       path: data.path,
       storage: 'supabase',
+      zoraTxHash: zoraTxHash || null,
+      chain: chain || 'base'
     });
   } catch (error) {
     console.error('Upload API: Error:', error);
