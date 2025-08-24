@@ -379,14 +379,18 @@ async function detectSmile() {
             );
             
             // Draw status text: Loading... until threshold, then Target reached in green
+            // Note: The overlay canvas is CSS-mirrored to match the video. To keep text readable (not mirrored),
+            // we draw the text with an internal horizontal flip so the net effect is normal orientation.
             const reachedTarget = happiness > 0.95;
-            overlayCtx.fillStyle = reachedTarget ? '#00ff00' : '#ffffff';
+            const statusText = reachedTarget ? 'Target reached' : 'Loading...';
             overlayCtx.font = 'bold 16px Arial';
-            overlayCtx.fillText(
-                reachedTarget ? 'Target reached' : 'Loading...',
-                box.x,
-                box.y - 10
-            );
+            const textMetrics = overlayCtx.measureText(statusText);
+            const textWidth = textMetrics.width;
+            overlayCtx.save();
+            overlayCtx.fillStyle = reachedTarget ? '#00ff00' : '#ffffff';
+            overlayCtx.scale(-1, 1);
+            overlayCtx.fillText(statusText, -(box.x + textWidth), box.y - 10);
+            overlayCtx.restore();
             
             // Draw a small progress bar under the text
             const barWidth = 100;
