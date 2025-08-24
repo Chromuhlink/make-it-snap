@@ -2,7 +2,7 @@
 import { createAppKit } from '@reown/appkit';
 import { mainnet, polygon, arbitrum, optimism, base } from '@reown/appkit/networks';
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
-import { createCoinCall, CreateConstants, createMetadataBuilder, createZoraUploaderForCreator } from '@zoralabs/coins-sdk';
+import { createCoinCall, CreateConstants, createMetadataBuilder, createZoraUploaderForCreator, setApiKey } from '@zoralabs/coins-sdk';
 import { base as baseChain } from 'viem/chains';
 
 // 1. Get a project ID at https://dashboard.reown.com
@@ -215,8 +215,39 @@ if (typeof window !== 'undefined') {
 // ------- Zora coin creation helper -------
 // Configure your developer referrer address here to earn rewards
 window.ZORA_CONFIG = window.ZORA_CONFIG || {
-    referrerAddress: null // e.g., '0xYourReferrerAddress'
+    referrerAddress: null, // e.g., '0xYourReferrerAddress'
+    // Temporary: API key wired here so both auto & manual coin work immediately.
+    // Prefer using env var VITE_ZORA_API_KEY in production.
+    apiKey: null
 };
+
+// Configure Zora Coins SDK API key from env or window configuration
+try {
+    const envKey = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_ZORA_API_KEY) || null;
+    const lsKey = (typeof localStorage !== 'undefined' && localStorage.getItem('ZORA_API_KEY')) || null;
+    const configuredKey = envKey || window.ZORA_CONFIG?.apiKey || lsKey || null;
+    if (configuredKey) {
+        setApiKey(configuredKey);
+        console.log('Zora SDK: API key configured');
+    } else {
+        console.warn('Zora SDK: No API key configured. Set VITE_ZORA_API_KEY or window.ZORA_CONFIG.apiKey');
+    }
+} catch (e) {
+    console.error('Zora SDK: Failed to set API key', e);
+}
+
+// Expose a runtime helper to set/update the API key without rebuilding
+try {
+    window.setZoraApiKey = function(key) {
+        try {
+            setApiKey(key);
+            try { if (typeof localStorage !== 'undefined') localStorage.setItem('ZORA_API_KEY', key); } catch {}
+            console.log('Zora SDK: API key set at runtime');
+        } catch (e) {
+            console.error('Zora SDK: Failed to set API key at runtime', e);
+        }
+    };
+} catch {}
 
 async function ensureBaseChain() {
     try {
