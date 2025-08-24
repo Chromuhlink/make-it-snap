@@ -268,6 +268,7 @@ async function capturePhoto() {
     // Show capture message and save controls immediately
     captureMessage.style.display = 'block';
     saveControls.style.display = 'block';
+    ensureManualCoinButton();
     
     console.log('Capture: Save controls displayed, waiting for user input (D to download, E to exit)');
     console.log('Capture: Will auto-exit in 6 seconds');
@@ -601,18 +602,30 @@ async function uploadToGallery() {
             // After successful upload, automatically start coin creation if wallet is connected
             try {
                 if (window.walletState?.isConnected) {
+                    if (captureMessage) {
+                        captureMessage.textContent = 'Preparing onchain coin...';
+                    }
                     const blob = await (await fetch(canvas.toDataURL('image/png'))).blob();
                     const file = new File([blob], 'snap.png', { type: 'image/png' });
                     const title = `${new Date().toLocaleString()} - Make It Snap`;
                     const coinResult = await window.coinSnapWithZora(file, title);
                     if (coinResult.ok) {
                         console.log('Coin creation submitted. Tx:', coinResult.hash);
+                        if (captureMessage) {
+                            captureMessage.textContent = 'Coin submitted. Check your wallet.';
+                        }
                     } else {
                         console.error('Coin creation failed:', coinResult.error || 'Unknown error');
+                        if (captureMessage) {
+                            captureMessage.textContent = 'Coin failed. Use Coin button.';
+                        }
                     }
                 }
             } catch (coinErr) {
                 console.error('Automatic coining error:', coinErr);
+                if (captureMessage) {
+                    captureMessage.textContent = 'Coin error. Use Coin button.';
+                }
             }
         } else {
             console.error('Client: Upload failed:', result.error);
@@ -667,6 +680,48 @@ function handleKeyPress(event) {
             console.log('Keyboard: Exit requested');
             resetCamera();
         }
+    }
+}
+
+// Manual coin button support
+function ensureManualCoinButton() {
+    const controls = document.getElementById('save-controls');
+    if (!controls) return;
+    let btn = document.getElementById('coin-onchain-btn');
+    if (!btn) {
+        btn = document.createElement('button');
+        btn.id = 'coin-onchain-btn';
+        btn.textContent = 'Coin onchain';
+        btn.style.marginLeft = '8px';
+        btn.onclick = async () => {
+            try {
+                if (!window.walletState?.isConnected) {
+                    if (window.appKitModal && typeof window.appKitModal.open === 'function') {
+                        window.appKitModal.open();
+                    } else {
+                        alert('Connect your wallet first.');
+                    }
+                    return;
+                }
+                if (captureMessage) {
+                    captureMessage.style.display = 'block';
+                    captureMessage.textContent = 'Preparing onchain coin...';
+                }
+                const blob = await (await fetch(canvas.toDataURL('image/png'))).blob();
+                const file = new File([blob], 'snap.png', { type: 'image/png' });
+                const title = `${new Date().toLocaleString()} - Make It Snap`;
+                const coinResult = await window.coinSnapWithZora(file, title);
+                if (coinResult.ok) {
+                    if (captureMessage) captureMessage.textContent = 'Coin submitted. Check wallet.';
+                } else {
+                    if (captureMessage) captureMessage.textContent = 'Coin failed: ' + (coinResult.error || 'Unknown');
+                }
+            } catch (e) {
+                console.error('Manual coin error:', e);
+                if (captureMessage) captureMessage.textContent = 'Coin error: ' + (e?.message || 'Unknown');
+            }
+        };
+        controls.appendChild(btn);
     }
 }
 

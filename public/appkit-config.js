@@ -201,8 +201,29 @@ async function ensureBaseChain() {
         return true;
     } catch (err) {
         console.error('Chain switch to Base failed:', err);
-        alert('Please switch your wallet network to Base to coin your snap.');
-        return false;
+        // Try to add Base if it's not available, then switch again
+        try {
+            const baseHex = '0x' + baseChain.id.toString(16);
+            await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [{
+                    chainId: baseHex,
+                    chainName: 'Base',
+                    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+                    rpcUrls: ['https://mainnet.base.org'],
+                    blockExplorerUrls: ['https://basescan.org']
+                }]
+            });
+            await window.ethereum.request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId: baseHex }]
+            });
+            return true;
+        } catch (addErr) {
+            console.error('Adding/switching to Base failed:', addErr);
+            alert('Please add and switch to Base network in your wallet to coin your snap.');
+            return false;
+        }
     }
 }
 
