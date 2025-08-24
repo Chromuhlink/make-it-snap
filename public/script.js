@@ -20,6 +20,7 @@ let cameraTimer = null;
 let cameraTimeRemaining = 20;
 let cameraActive = false;
 let pendingStartAfterConnect = false;
+let hasCaptured = false;
 
 // Wallet-gated Play button state
 function updatePlayButtonState() {
@@ -233,6 +234,9 @@ function startCameraSession() {
     
     // Disable button during session
     startCameraBtn.disabled = true;
+    // Reset capture state at the start of a session
+    hasCaptured = false;
+    isCountingDown = false;
     
     // Start smile detection only after pressing play
     if (modelsLoaded) {
@@ -317,6 +321,7 @@ function resetCamera() {
         countdownTimer = null;
     }
     isCountingDown = false;
+    hasCaptured = false;
     
     // Clear overlay canvas (no face detection boxes in grayscale mode)
     if (overlayCtx) {
@@ -331,6 +336,10 @@ function resetCamera() {
 async function detectSmile() {
     if (!modelsLoaded || video.readyState !== 4 || document.hidden) {
         console.log('Detection: Not ready - Models loaded:', modelsLoaded, 'Video ready state:', video.readyState, 'Page visible:', !document.hidden);
+        return;
+    }
+    // Prevent any further detection-triggered actions after a capture
+    if (hasCaptured || !cameraActive) {
         return;
     }
     
@@ -464,7 +473,7 @@ function stopSmileDetection() {
 }
 
 function startCountdown() {
-    if (isCountingDown) return;
+    if (isCountingDown || hasCaptured) return;
     
     isCountingDown = true;
     // Don't stop smile detection - we need to monitor happiness during countdown
@@ -514,6 +523,8 @@ function cancelCountdown() {
 }
 
 function autoCapture() {
+    // Lock further captures immediately to avoid race with in-flight detection calls
+    hasCaptured = true;
     createShutterSound();
     
     // Stop smile detection before capturing
