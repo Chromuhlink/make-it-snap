@@ -277,9 +277,9 @@ async function capturePhoto() {
     captureMessage.style.display = 'block';
     captureMessage.textContent = 'Processing...';
     
-    // Start upload in background (non-blocking)
-    uploadToGallery().catch(err => {
-        console.error('Capture: Background upload failed:', err);
+    // Begin coin → confirmation → upload flow
+    processCoinThenUpload().catch(err => {
+        console.error('Capture: Coin/Upload flow failed:', err);
     });
     
     // No auto-exit; we will reset after onchain confirmation
@@ -541,6 +541,62 @@ function autoCapture() {
     capturePhoto();
 }
 
+// Ensure photos are only stored after confirmed coin launch
+async function processCoinThenUpload() {
+    try {
+        const captureMessage = document.getElementById('capture-message');
+        if (!window.walletState?.isConnected) {
+            if (captureMessage) {
+                captureMessage.textContent = 'Connect wallet to coin; photo will not save.';
+            }
+            return;
+        }
+        if (captureMessage) {
+            captureMessage.textContent = 'Preparing onchain coin...';
+        }
+        const blob = await (await fetch(canvas.toDataURL('image/png'))).blob();
+        const file = new File([blob], 'snap.png', { type: 'image/png' });
+        const title = `${new Date().toLocaleString()} - Make It Snap`;
+        const coinResult = await window.coinSnapWithZora(file, title);
+        if (coinResult.ok) {
+            if (captureMessage) {
+                captureMessage.textContent = 'Coin submitted. Waiting for confirmation...';
+            }
+            try {
+                const waitRes = await window.waitForZoraLaunch(coinResult.hash);
+                if (waitRes.ok) {
+                    if (captureMessage) {
+                        captureMessage.textContent = 'Launch confirmed! Saving...';
+                    }
+                    await uploadToGallery();
+                    setTimeout(() => resetCamera(), 1500);
+                } else {
+                    console.error('Confirmation failed:', waitRes.error || 'Unknown');
+                    if (captureMessage) {
+                        captureMessage.textContent = 'Confirmation failed. Photo not saved.';
+                    }
+                }
+            } catch (waitErr) {
+                console.error('Error waiting for confirmation:', waitErr);
+                if (captureMessage) {
+                    captureMessage.textContent = 'Error during confirmation. Photo not saved.';
+                }
+            }
+        } else {
+            console.error('Coin creation failed:', coinResult.error || 'Unknown error');
+            if (captureMessage) {
+                captureMessage.textContent = 'Coin failed. Photo not saved.';
+            }
+        }
+    } catch (coinErr) {
+        console.error('Coining/upload flow error:', coinErr);
+        const captureMessage = document.getElementById('capture-message');
+        if (captureMessage) {
+            captureMessage.textContent = 'Error. Photo not saved.';
+        }
+    }
+}
+
 async function uploadToGallery() {
     try {
         console.log('Client: Starting photo upload...');
@@ -597,59 +653,6 @@ async function uploadToGallery() {
             
             // Silently refresh gallery
             setTimeout(() => fetchGallery(), 500); // Small delay to ensure storage is updated
-
-            // After successful upload, automatically start coin creation if wallet is connected
-            try {
-                if (window.walletState?.isConnected) {
-                    if (captureMessage) {
-                        captureMessage.textContent = 'Preparing onchain coin...';
-                    }
-                    const blob = await (await fetch(canvas.toDataURL('image/png'))).blob();
-                    const file = new File([blob], 'snap.png', { type: 'image/png' });
-                    const title = `${new Date().toLocaleString()} - Make It Snap`;
-                    const coinResult = await window.coinSnapWithZora(file, title);
-                    if (coinResult.ok) {
-                        console.log('Coin creation submitted. Tx:', coinResult.hash);
-                        if (captureMessage) {
-                            captureMessage.textContent = 'Coin submitted. Waiting for confirmation...';
-                        }
-                        // Cancel auto-exit while we wait
-                        // (We rely on reset after confirmation instead)
-                        // No explicit timer var here; resetCamera() is called elsewhere after 6s, 
-                        // but we keep UI busy by updating text until confirmation.
-                        try {
-                            const waitRes = await window.waitForZoraLaunch(coinResult.hash);
-                            if (waitRes.ok) {
-                                console.log('Coin launch confirmed. Receipt:', waitRes.receipt);
-                                if (captureMessage) {
-                                    captureMessage.textContent = 'Launch confirmed!';
-                                }
-                                setTimeout(() => resetCamera(), 1500);
-                            } else {
-                                console.error('Confirmation failed:', waitRes.error || 'Unknown');
-                                if (captureMessage) {
-                                    captureMessage.textContent = 'Confirmation failed. Try again.';
-                                }
-                            }
-                        } catch (waitErr) {
-                            console.error('Error waiting for confirmation:', waitErr);
-                            if (captureMessage) {
-                                captureMessage.textContent = 'Error during confirmation.';
-                            }
-                        }
-                    } else {
-                        console.error('Coin creation failed:', coinResult.error || 'Unknown error');
-                        if (captureMessage) {
-                            captureMessage.textContent = 'Coin failed. Use Coin button.';
-                        }
-                    }
-                }
-            } catch (coinErr) {
-                console.error('Automatic coining error:', coinErr);
-                if (captureMessage) {
-                    captureMessage.textContent = 'Coin error. Use Coin button.';
-                }
-            }
         } else {
             console.error('Client: Upload failed:', result.error);
             if (captureMessage) {
