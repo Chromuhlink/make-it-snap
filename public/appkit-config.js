@@ -276,7 +276,7 @@ if (typeof window !== 'undefined') {
 // ------- Zora coin creation helper -------
 // Configure your developer referrer address here to earn rewards
 window.ZORA_CONFIG = window.ZORA_CONFIG || {
-    referrerAddress: null, // e.g., '0xYourReferrerAddress'
+    referrerAddress: '0xf6910D47FbB1F5518d60C721D4189936eCd5a1b6', // e.g., '0xYourReferrerAddress'
     // Temporary: API key wired here so both auto & manual coin work immediately.
     // Prefer using env var VITE_ZORA_API_KEY in production.
     apiKey: null
