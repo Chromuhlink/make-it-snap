@@ -161,17 +161,35 @@ h1 {
     animation: pulse 0.5s infinite;
 }
 
-/* AppKit Button Styling */
-w3m-button {
+/* Connect Wallet Button */
+.connect-wallet-btn {
+    background-color: #667eea;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     width: 100%;
     margin-bottom: 1rem;
-    --w3m-accent: #667eea;
-    --w3m-border-radius-master: 8px;
 }
 
-w3m-network-button {
-    width: 100%;
-    margin-bottom: 0.5rem;
+.connect-wallet-btn:hover {
+    background-color: #5a67d8;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+.connect-wallet-btn.connected {
+    background-color: #48bb78;
+    font-size: 14px;
+}
+
+.connect-wallet-btn.connected:hover {
+    background-color: #38a169;
 }
 
 .start-camera-btn {

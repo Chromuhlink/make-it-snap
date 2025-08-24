@@ -4,10 +4,13 @@
   "description": "AI-powered photo booth with smile detection",
   "main": "index.html",
   "scripts": {
-    "dev": "python3 -m http.server 3000 --directory public",
+    "dev": "vite",
+    "dev-python": "python3 -m http.server 3000 --directory public",
     "vercel-dev": "vercel dev",
-    "build": "echo 'Static files are in public directory'",
-    "deploy": "vercel"
+    "build": "vite build",
+    "build-static": "echo 'Static files are in public directory'",
+    "deploy": "vercel",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@reown/appkit": "^1.7.20",
@@ -19,6 +22,7 @@
     "wagmi": "^2.16.5"
   },
   "devDependencies": {
-    "vercel": "^44.6.3"
+    "vercel": "^44.6.3",
+    "vite": "^7.1.3"
   }
 }

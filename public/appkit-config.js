@@ -57,28 +57,12 @@ modal.subscribeEvents(event => {
 
 // Update UI based on wallet state
 function updateWalletUI() {
-    const connectBtn = document.getElementById('connect-wallet-btn');
-    if (!connectBtn) return;
-    
-    const state = modal.getState();
-    const account = modal.getAddress();
-    
-    if (account) {
-        window.walletState.isConnected = true;
-        window.walletState.address = account;
-        window.walletState.chainId = modal.getChainId();
-        
-        // Show connected state
-        const shortAddress = `${account.slice(0, 6)}...${account.slice(-4)}`;
-        connectBtn.textContent = shortAddress;
-        connectBtn.classList.add('connected');
-    } else {
-        window.walletState.isConnected = false;
-        window.walletState.address = null;
-        window.walletState.chainId = null;
-        
-        // Show disconnected state
-        connectBtn.textContent = 'Connect Wallet';
-        connectBtn.classList.remove('connected');
-    }
+    // We'll use the AppKit modal button, no need for custom UI updates
+    console.log('Wallet state updated');
 }
+
+// Make modal available globally for debugging
+window.appKitModal = modal;
+window.wagmiConfig = wagmiConfig;
+
+console.log('AppKit initialized successfully');
