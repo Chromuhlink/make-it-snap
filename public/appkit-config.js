@@ -30,7 +30,7 @@ export const modal = createAppKit({
     metadata,
     projectId,
     features: {
-        analytics: true
+        analytics: false
     },
     themeMode: 'light',
     themeVariables: {
@@ -66,3 +66,50 @@ window.appKitModal = modal;
 window.wagmiConfig = wagmiConfig;
 
 console.log('AppKit initialized successfully');
+// Provide a robust disconnect fallback and UI control
+function hardDisconnect() {
+    try {
+        if (typeof localStorage !== 'undefined') {
+            const patterns = [
+                /^wagmi/i,
+                /^walletconnect/i,
+                /^wc@/i,
+                /^WALLETCONNECT/i,
+                /^coinbase/i,
+                /^cbwallet/i,
+                /^appkit/i,
+                /^w3m/i,
+                /^reown/i
+            ];
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+                const key = localStorage.key(i);
+                if (patterns.some(p => p.test(key))) {
+                    localStorage.removeItem(key);
+                }
+            }
+        }
+        if (window.ethereum && typeof window.ethereum.removeAllListeners === 'function') {
+            window.ethereum.removeAllListeners('accountsChanged');
+            window.ethereum.removeAllListeners('chainChanged');
+            window.ethereum.removeAllListeners('disconnect');
+        }
+    } catch (e) {
+        console.error('Disconnect cleanup error:', e);
+    }
+    try { if (typeof sessionStorage !== 'undefined') sessionStorage.clear(); } catch {}
+    window.location.reload();
+}
+
+window.forceDisconnect = hardDisconnect;
+
+document.addEventListener('DOMContentLoaded', () => {
+    const controls = document.querySelector('.controls-section');
+    if (!controls || document.getElementById('disconnect-wallet-btn')) return;
+    const btn = document.createElement('button');
+    btn.id = 'disconnect-wallet-btn';
+    btn.className = 'start-camera-btn';
+    btn.textContent = 'Disconnect';
+    btn.style.backgroundColor = '#dc3545';
+    btn.onclick = hardDisconnect;
+    controls.appendChild(btn);
+});
