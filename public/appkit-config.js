@@ -25,6 +25,37 @@ const metadata = {
     icons: ['https://avatars.githubusercontent.com/u/37784886']
 };
 
+// Clear any persisted wallet sessions on first load to prevent auto-connect
+(function clearPersistedWalletSessionsOnce() {
+    try {
+        if (typeof sessionStorage !== 'undefined' && !sessionStorage.getItem('wallet_cleared_once')) {
+            if (typeof localStorage !== 'undefined') {
+                const patterns = [
+                    /^wagmi/i,
+                    /^walletconnect/i,
+                    /^wc@/i,
+                    /^WALLETCONNECT/i,
+                    /^coinbase/i,
+                    /^cbwallet/i,
+                    /^appkit/i,
+                    /^w3m/i,
+                    /^reown/i
+                ];
+                for (let i = localStorage.length - 1; i >= 0; i--) {
+                    const key = localStorage.key(i);
+                    if (patterns.some(p => p.test(key))) {
+                        localStorage.removeItem(key);
+                    }
+                }
+            }
+            try { sessionStorage.clear(); } catch {}
+            sessionStorage.setItem('wallet_cleared_once', '1');
+        }
+    } catch (e) {
+        console.warn('Wallet persistence clear failed (non-blocking):', e);
+    }
+})();
+
 // 5. Create the modal
 export const modal = createAppKit({
     adapters: [wagmiAdapter],
@@ -162,8 +193,7 @@ function setDisconnected() {
 }
 
 if (typeof window !== 'undefined') {
-    // Initial probe
-    refreshWalletState();
+    // No initial auto-probe; wait for explicit user action to connect
     // Listen to provider events
     if (window.ethereum && typeof window.ethereum.on === 'function') {
         window.ethereum.on('accountsChanged', (accounts) => {
