@@ -269,32 +269,16 @@ async function capturePhoto() {
         captureBtn.style.display = 'none';
     }
     
-    // Show capture message and save controls immediately
+    // Show capture message only; no save/exit overlay
     captureMessage.style.display = 'block';
-    saveControls.style.display = 'block';
-    ensureManualCoinButton();
-    
-    console.log('Capture: Save controls displayed, waiting for user input (D to download, E to exit)');
-    console.log('Capture: Will auto-exit in 6 seconds');
+    captureMessage.textContent = 'Processing...';
     
     // Start upload in background (non-blocking)
     uploadToGallery().catch(err => {
         console.error('Capture: Background upload failed:', err);
     });
     
-    // Hide initial capture message after 2 seconds (upload status will replace it)
-    setTimeout(() => {
-        // Only hide if it still says "CAPTURED!"
-        if (captureMessage.textContent === 'CAPTURED!') {
-            captureMessage.style.display = 'none';
-        }
-    }, 2000);
-    
-    // Auto-exit after 6 seconds
-    setTimeout(() => {
-        console.log('Capture: Auto-exit timer triggered after 6 seconds');
-        resetCamera();
-    }, 6000);
+    // No auto-exit; we will reset after onchain confirmation
 }
 
 function resetCamera() {
@@ -683,87 +667,11 @@ async function uploadToGallery() {
     }
 }
 
-function downloadPhoto() {
-    const imageData = canvas.toDataURL('image/png');
-    const link = document.createElement('a');
-    link.download = `photo-${new Date().toISOString().replace(/[:.]/g, '-')}.png`;
-    link.href = imageData;
-    link.click();
-}
+// Removed download functionality (users can save from gallery/browser)
 
-function handleKeyPress(event) {
-    // Only handle keys when save controls are visible
-    if (saveControls.style.display === 'block') {
-        const key = event.key.toLowerCase();
-        console.log('Keyboard: Key pressed:', key);
-        
-        if (key === 'd') {
-            console.log('Keyboard: Download requested');
-            downloadPhoto();
-            // Optional: Reset camera after download
-            setTimeout(() => {
-                resetCamera();
-            }, 1000);
-        } else if (key === 'e') {
-            console.log('Keyboard: Exit requested');
-            resetCamera();
-        }
-    }
-}
+// Removed save/exit key handling
 
-// Manual coin button support
-function ensureManualCoinButton() {
-    const controls = document.getElementById('save-controls');
-    if (!controls) return;
-    let btn = document.getElementById('coin-onchain-btn');
-    if (!btn) {
-        btn = document.createElement('button');
-        btn.id = 'coin-onchain-btn';
-        btn.textContent = 'Coin onchain';
-        btn.style.marginLeft = '8px';
-        btn.onclick = async () => {
-            try {
-                if (!window.walletState?.isConnected) {
-                    if (window.appKitModal && typeof window.appKitModal.open === 'function') {
-                        window.appKitModal.open();
-                    } else {
-                        alert('Connect your wallet first.');
-                    }
-                    return;
-                }
-                if (captureMessage) {
-                    captureMessage.style.display = 'block';
-                    captureMessage.textContent = 'Preparing onchain coin...';
-                }
-                const blob = await (await fetch(canvas.toDataURL('image/png'))).blob();
-                const file = new File([blob], 'snap.png', { type: 'image/png' });
-                const title = `${new Date().toLocaleString()} - Make It Snap`;
-                const coinResult = await window.coinSnapWithZora(file, title);
-                if (coinResult.ok) {
-                    if (captureMessage) captureMessage.textContent = 'Coin submitted. Waiting for confirmation...';
-                    try {
-                        const waitRes = await window.waitForZoraLaunch(coinResult.hash);
-                        if (waitRes.ok) {
-                            if (captureMessage) captureMessage.textContent = 'Launch confirmed!';
-                            setTimeout(() => resetCamera(), 1500);
-                        } else {
-                            if (captureMessage) captureMessage.textContent = 'Confirmation failed. Try again.';
-                        }
-                    } catch (e2) {
-                        console.error('Manual wait error:', e2);
-                        if (captureMessage) captureMessage.textContent = 'Error during confirmation.';
-                    }
-                } else {
-                    if (captureMessage) captureMessage.textContent = 'Coin failed: ' + (coinResult.error || 'Unknown');
-                }
-            } catch (e) {
-                console.error('Manual coin error:', e);
-                if (captureMessage) captureMessage.textContent = 'Coin error: ' + (e?.message || 'Unknown');
-            }
-        };
-        controls.appendChild(btn);
-    }
-}
+// Removed manual coin button; flow is automatic after capture
 
 // Gallery functionality
 let galleryRefreshInterval = null;
@@ -937,7 +845,7 @@ function addGalleryRefreshButton() {
 window.toggleDaily = toggleDaily;
 window.openPhoto = openPhoto;
 
-document.addEventListener('keydown', handleKeyPress);
+// Removed save/exit key bindings
 
 // Cleanup function to prevent memory leaks
 function cleanup() {
